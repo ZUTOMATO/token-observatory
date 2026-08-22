@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Token Observatory · dsh / codex / claude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="vendor/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --panel: #FFFFFF;
+    --line: #E8E8EC;
+    --line-soft: #F2F2F5;
+    --ink: #131316;
+    --ink-2: #55555E;
+    --ink-3: #8E8E98;
+    --dsh: #2563EB;
+    --codex: #059669;
+    --claude: #D97706;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(19,19,22,.04);
+    --font-d: "Space Grotesk", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-m: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font-d); font-size: 14px; line-height: 1.5; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 26px 24px 72px; }
+  .mono { font-family: var(--font-m); font-variant-numeric: tabular-nums; }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .panel, .kpi, header { animation: rise .4s ease both; }
+
+  /* header */
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--ink); display: grid; place-items: center; grid-auto-flow: column; gap: 3px; align-items: end; padding: 7px 0; flex: none; }
+  .logo i { display: block; width: 3px; border-radius: 2px; background: #fff; }
+  .logo i:nth-child(1) { height: 8px; opacity: .55; }
+  .logo i:nth-child(2) { height: 13px; opacity: .8; }
+  .logo i:nth-child(3) { height: 19px; }
+  h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .subtitle { font-size: 12px; color: var(--ink-3); margin-top: 1px; }
+  .head-actions { display: flex; align-items: center; gap: 10px; }
+  .status { display: inline-flex; align-items: center; gap: 7px; font: 400 11.5px var(--font-m); color: var(--ink-3); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--codex); }
+  .dot.busy { background: var(--claude); animation: pulse 1s infinite; }
+  .dot.off { background: var(--ink-3); }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .btn { font: 500 12px var(--font-d); color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; transition: all .15s; }
+  .btn:hover { color: var(--ink); border-color: var(--ink-3); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn.primary:hover { opacity: .85; }
+
+  /* KPI */
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px 13px; }
+  .kpi .label { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .kpi .value { margin-top: 7px; font: 600 27px/1 var(--font-m); letter-spacing: -0.03em; }
+  .kpi .sub { margin-top: 6px; font: 400 11px var(--font-m); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .sub .up { color: var(--claude); } .kpi .sub .down { color: var(--codex); }
+
+  /* panels */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 12px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .panel-head h2 { font-size: 13.5px; font-weight: 600; }
+  .panel-head .hint { font-size: 11px; color: var(--ink-3); }
+  .grid-main { display: grid; grid-template-columns: minmax(0,1fr) 400px; gap: 12px; align-items: stretch; }
+  @media (max-width: 1020px) { .grid-main { grid-template-columns: 1fr; } .kpis { grid-template-columns: repeat(2, 1fr); } }
+
+  .chips { display: inline-flex; gap: 4px; }
+  .chip { font: 500 11px var(--font-m); color: var(--ink-3); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 3.5px 10px; cursor: pointer; transition: all .15s; }
+  .chip:hover { color: var(--ink-2); border-color: var(--ink-3); }
+  .chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+  .legend { display: inline-flex; gap: 14px; font-size: 11.5px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 9px; height: 9px; border-radius: 3px; }
+
+  .chart-box { position: relative; height: 320px; }
+
+  /* models */
+  .model-row { display: grid; grid-template-columns: 10px minmax(0,1fr) auto; gap: 4px 10px; align-items: center; padding: 7.5px 0; border-bottom: 1px solid var(--line-soft); }
+  .model-row:last-child { border-bottom: 0; }
+  .model-name { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tool-tag { font: 500 10px var(--font-m); padding: 1.5px 5px; border-radius: 4px; margin-right: 7px; }
+  .model-nums { text-align: right; }
+  .model-nums .t { font: 600 12.5px var(--font-m); }
+  .model-nums .c { font: 400 10.5px var(--font-m); color: var(--ink-3); margin-left: 7px; }
+  .model-bar { grid-column: 2 / 4; height: 3px; border-radius: 2px; background: var(--line-soft); overflow: hidden; }
+  .model-bar i { display: block; height: 100%; }
+
+  /* heatmap */
+  .hm-grid { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 3px; align-items: center; }
+  .hm-lab { font: 500 10px var(--font-m); color: var(--ink-3); }
+  .hm-cell { height: 20px; border-radius: 4px; background: var(--line-soft); transition: transform .1s; }
+  .hm-cell:hover { transform: scale(1.12); }
+  .hm-hours { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 3px; margin-top: 5px; }
+  .hm-hours span { font: 400 9.5px var(--font-m); color: var(--ink-3); text-align: center; }
+  .hm-note { margin-top: 10px; font-size: 11px; color: var(--ink-3); }
+
+  /* sessions */
+  .sess-scroll { max-height: 540px; overflow: auto; border: 1px solid var(--line-soft); border-radius: 8px; }
+  table.sess { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.sess th { position: sticky; top: 0; z-index: 1; background: var(--panel); text-align: left; font: 600 10.5px var(--font-m); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  table.sess td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.sess tr:last-child td { border-bottom: 0; }
+  table.sess tbody tr.row { cursor: pointer; transition: background .12s; }
+  table.sess tbody tr.row:hover { background: var(--line-soft); }
+  td.num { text-align: right; font-family: var(--font-m); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  th.num { text-align: right; }
+  .msg { color: var(--ink-2); max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr.detail td { background: var(--line-soft); }
+  .detail-inner { font-size: 12px; color: var(--ink-2); line-height: 1.7; padding: 2px 0; }
+  .detail-inner .k { color: var(--ink-3); font-family: var(--font-m); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; margin-right: 6px; }
+  .detail-inner .full { white-space: normal; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+
+  /* comp table */
+  table.comp { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.comp th { text-align: right; font: 600 10.5px var(--font-m); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  table.comp th:first-child { text-align: left; }
+  table.comp td { text-align: right; padding: 10px; border-bottom: 1px solid var(--line-soft); font-family: var(--font-m); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  table.comp td:first-child { text-align: left; }
+  table.comp tr:last-child td { border-bottom: 0; }
+  td.total { color: var(--ink); font-weight: 600; }
+  .stackbar { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: var(--line-soft); min-width: 110px; }
+  .stackbar i { display: block; height: 100%; }
+
+  footer { margin-top: 24px; font-size: 11.5px; color: var(--ink-3); line-height: 1.8; }
+  footer code { font-family: var(--font-m); font-size: 10.5px; background: var(--line-soft); padding: 1px 5px; border-radius: 4px; }
+
+  /* modal */
+  .backdrop { position: fixed; inset: 0; background: rgba(19,19,22,.35); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 50; }
+  .backdrop[hidden] { display: none; }
+  .modal { width: min(680px, 92vw); max-height: 82vh; overflow: auto; background: var(--panel); border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(19,19,22,.18); padding: 22px 24px; }
+  .modal h3 { font-size: 15px; font-weight: 700; }
+  .modal .note { font-size: 11.5px; color: var(--ink-3); margin: 6px 0 14px; line-height: 1.6; }
+  table.prices { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.prices th { text-align: right; font: 600 10px var(--font-m); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); padding: 5px 6px; border-bottom: 1px solid var(--line); }
+  table.prices th:first-child { text-align: left; }
+  table.prices td { padding: 5px 6px; border-bottom: 1px solid var(--line-soft); }
+  table.prices td:first-child { font-family: var(--font-m); font-size: 11.5px; color: var(--ink-2); }
+  table.prices input { width: 84px; font: 400 11.5px var(--font-m); padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--bg); }
+  table.prices input:focus { outline: 2px solid rgba(37,99,235,.25); border-color: var(--dsh); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="logo"><i></i><i></i><i></i></div>
+      <div>
+        <h1>Token Observatory</h1>
+        <div class="subtitle">dsh · codex · claude code 本地用量观测台</div>
+      </div>
+    </div>
+    <div class="head-actions">
+      <span class="status"><span class="dot off" id="statusDot"></span><span id="statusText">连接中…</span></span>
+      <button class="btn" id="pricesBtn">单价设置</button>
+      <button class="btn" id="rescanBtn">重扫</button>
+    </div>
+  </header>
+
+  <section class="kpis">
+    <div class="kpi"><div class="label">累计 Tokens</div><div class="value" id="kTotal">–</div><div class="sub" id="kTotalSub"></div></div>
+    <div class="kpi"><div class="label">估算费用</div><div class="value" id="kCost">–</div><div class="sub" id="kCostSub">USD · 单价可设置</div></div>
+    <div class="kpi"><div class="label">今日</div><div class="value" id="kToday">–</div><div class="sub" id="kTodaySub"></div></div>
+    <div class="kpi"><div class="label">近 7 天</div><div class="value" id="kWeek">–</div><div class="sub" id="kWeekSub"></div></div>
+    <div class="kpi"><div class="label">缓存命中率</div><div class="value" id="kCache">–</div><div class="sub">cache_read ÷ (input + cache_read)</div></div>
+  </section>
+
+  <div class="grid-main">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>每日用量趋势</h2>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <span class="legend">
+            <span><i class="swatch" style="background:var(--dsh)"></i>dsh</span>
+            <span><i class="swatch" style="background:var(--codex)"></i>codex</span>
+            <span><i class="swatch" style="background:var(--claude)"></i>claude</span>
+            <span><i class="swatch" style="background:var(--ink)"></i>7 日均线</span>
+          </span>
+          <span class="chips" id="trendChips">
+            <button class="chip" data-range="14">14d</button>
+            <button class="chip active" data-range="30">30d</button>
+            <button class="chip" data-range="90">90d</button>
+            <button class="chip" data-range="0">全部</button>
+          </span>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="dailyChart"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>模型排行</h2><span class="hint">tokens · 估算费用</span></div>
+      <div id="modelList"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>活跃时段热力图</h2>
+      <span class="chips" id="hmChips">
+        <button class="chip active" data-tool="all">全部</button>
+        <button class="chip" data-tool="dsh">dsh</button>
+        <button class="chip" data-tool="codex">codex</button>
+        <button class="chip" data-tool="claude">claude</button>
+      </span>
+    </div>
+    <div class="hm-grid" id="hmGrid"></div>
+    <div class="hm-hours" id="hmHours"></div>
+    <div class="hm-note" id="hmNote"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>会话排行</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="chips" id="sessToolChips">
+          <button class="chip active" data-tool="all">全部</button>
+          <button class="chip" data-tool="dsh">dsh</button>
+          <button class="chip" data-tool="codex">codex</button>
+          <button class="chip" data-tool="claude">claude</button>
+        </span>
+        <span class="chips" id="sessRangeChips">
+          <button class="chip" data-range="7">7d</button>
+          <button class="chip active" data-range="30">30d</button>
+          <button class="chip" data-range="90">90d</button>
+          <button class="chip" data-range="0">全部</button>
+        </span>
+      </div>
+    </div>
+    <div class="sess-scroll">
+      <table class="sess">
+        <thead><tr><th>日期</th><th>工具</th><th>模型</th><th class="num">调用</th><th class="num">Tokens</th><th class="num">费用</th><th>首条消息</th></tr></thead>
+        <tbody id="sessBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>分工具 Token 构成</h2><span class="hint">Input 为去除缓存读取后的净输入</span></div>
+    <table class="comp">
+      <thead><tr><th>工具</th><th>Input</th><th>Cache Read</th><th>Cache Write</th><th>Output</th><th>Total</th><th>费用</th><th style="width:150px">构成</th></tr></thead>
+      <tbody id="compBody"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    数据源：<code>~/.dsh/sessions</code> · <code>~/.codex/sessions</code>（token_count 逐轮增量） · <code>~/.claude/projects</code>（按消息 id 全局去重）<br>
+    日期与时段按本机时区分桶；费用为按单价表的估算值，点「单价设置」改成你渠道的真实价格。服务端每 60s 增量扫描，页面 30s 自动刷新。
+  </footer>
+</div>
+
+<div class="backdrop" id="pricesModal" hidden>
+  <div class="modal">
+    <h3>模型单价（USD / 1M tokens）</h3>
+    <div class="note">未覆盖的模型按通配规则回退（如 <span class="mono">deepseek*</span>）。保存后写入 <span class="mono">prices.json</span> 并立即重算费用。</div>
+    <table class="prices">
+      <thead><tr><th>模型</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Write</th></tr></thead>
+      <tbody id="pricesBody"></tbody>
+    </table>
+    <div class="modal-actions">
+      <button class="btn" id="pricesCancel">取消</button>
+      <button class="btn primary" id="pricesSave">保存并重算</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const TOOLS = ['dsh', 'codex', 'claude'];
+const TC = { dsh: '#2563EB', codex: '#059669', claude: '#D97706' };
+const TC_RGB = { dsh: '37,99,235', codex: '5,150,105', claude: '217,119,6' };
+const BUCKETS = { i: '#2563EB', cr: '#93B4F5', cw: '#C9CFDA', o: '#131316' };
+const WD = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+let STATS = null;
+let PRICES = null;
+let trendRange = 30, hmTool = 'all', sessRange = 30, sessTool = 'all';
+let dailyChart = null;
+let lastTrendKey = '', lastModelKey = '', lastSessKey = '', lastHmKey = '';
+
+/* ---------- format ---------- */
+const fmt = (n) => {
+  if (n == null || isNaN(n)) return '–';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return String(Math.round(n));
+};
+const fmtCost = (n) => {
+  if (n == null || isNaN(n)) return '–';
+  if (n >= 1000) return '$' + (n / 1000).toFixed(2) + 'K';
+  if (n >= 100) return '$' + n.toFixed(0);
+  return '$' + n.toFixed(2);
+};
+const sumB = (b) => b.i + b.o + b.cr + b.cw;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const todayStr = () => { const d = new Date(); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+
+function countUp(el, target, formatter) {
+  const from = Number(el.dataset.v || 0);
+  el.dataset.v = target;
+  if (from === target) { el.textContent = formatter(target); return; }
+  const t0 = performance.now(), dur = 550;
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = formatter(from + (target - from) * e);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* ---------- KPI ---------- */
+function renderKpis() {
+  const s = STATS, all = s.totals.all;
+  countUp(document.getElementById('kTotal'), sumB(all), fmt);
+  document.getElementById('kTotalSub').textContent = `in ${fmt(all.i)} · cr ${fmt(all.cr)} · out ${fmt(all.o)}`;
+  countUp(document.getElementById('kCost'), s.cost.total, fmtCost);
+  const dayMap = new Map(s.byDay.map((d) => [d.date, d]));
+  const t = dayMap.get(todayStr());
+  const tSum = t ? sumB(t.dsh) + sumB(t.codex) + sumB(t.claude) : 0;
+  countUp(document.getElementById('kToday'), tSum, fmt);
+  document.getElementById('kTodaySub').textContent = t ? `${fmtCost(t.cost)} · ${TOOLS.filter((k) => sumB(t[k]) > 0).join(' + ') || '—'}` : '今天还没跑';
+  const dates = s.byDay.map((d) => d.date);
+  const last7 = dates.slice(-7), prev7 = dates.slice(-14, -7);
+  const dSum = (ds) => ds.reduce((a, d) => { const x = dayMap.get(d); return a + (x ? sumB(x.dsh) + sumB(x.codex) + sumB(x.claude) : 0); }, 0);
+  const w = dSum(last7), pw = dSum(prev7);
+  countUp(document.getElementById('kWeek'), w, fmt);
+  let delta = '';
+  if (pw > 0) {
+    const r = (w - pw) / pw * 100;
+    delta = ` <span class="${r >= 0 ? 'up' : 'down'}">${r >= 0 ? '▲' : '▼'}${Math.abs(r).toFixed(0)}%</span> vs 前 7 天`;
+  }
+  document.getElementById('kWeekSub').innerHTML = `${fmtCost(s.byDay.slice(-7).reduce((a, d) => a + d.cost, 0))}${delta}`;
+  const denom = all.i + all.cr;
+  countUp(document.getElementById('kCache'), denom > 0 ? all.cr / denom * 100 : 0, (v) => v.toFixed(1) + '%');
+}
+
+/* ---------- daily trend ---------- */
+function renderTrend() {
+  let days = STATS.byDay;
+  if (trendRange > 0) days = days.slice(-trendRange);
+  const key = trendRange + ':' + days.length + ':' + (days[0] ? days[0].date : '') + ':' + (days[days.length - 1] ? sumB(days[days.length - 1].dsh) + sumB(days[days.length - 1].codex) + sumB(days[days.length - 1].claude) : 0);
+  if (key === lastTrendKey && dailyChart) return;
+  lastTrendKey = key;
+  if (!days.length) return;
+
+  const labels = days.map((d) => d.date.slice(5));
+  const totals = days.map((d) => sumB(d.dsh) + sumB(d.codex) + sumB(d.claude));
+  const ma = totals.map((_, i) => {
+    const a = totals.slice(Math.max(0, i - 6), i + 1);
+    return a.reduce((x, y) => x + y, 0) / a.length;
+  });
+
+  if (dailyChart) dailyChart.destroy();
+  dailyChart = new Chart(document.getElementById('dailyChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        ...TOOLS.map((tool) => ({
+          type: 'bar', label: tool, stack: 's',
+          data: days.map((d) => sumB(d[tool])),
+          backgroundColor: TC[tool], borderRadius: 2, maxBarThickness: 24,
+        })),
+        {
+          type: 'line', label: '7d MA', data: ma,
+          borderColor: '#131316', borderWidth: 1.5, pointRadius: 0,
+          tension: 0.35, borderDash: [5, 4],
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#131316', padding: 10, cornerRadius: 8, displayColors: true, boxWidth: 8, boxHeight: 8, boxPadding: 3,
+          titleFont: { family: "'JetBrains Mono', monospace", size: 11.5 },
+          bodyFont: { family: "'JetBrains Mono', monospace", size: 11.5 },
+          callbacks: {
+            label: (it) => it.dataset.type === 'line' ? ` 均线: ${fmt(it.raw)}` : ` ${it.dataset.label}: ${fmt(it.raw)}`,
+            footer: (its) => {
+              const d = days[its[0].dataIndex];
+              return `合计 ${fmt(totals[its[0].dataIndex])} · ${fmtCost(d.cost)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, border: { color: '#E8E8EC' }, ticks: { color: '#8E8E98', font: { family: "'JetBrains Mono', monospace", size: 10.5 }, maxRotation: 0, autoSkipPadding: 14 } },
+        y: { stacked: true, grid: { color: '#F2F2F5' }, border: { display: false }, ticks: { color: '#8E8E98', font: { family: "'JetBrains Mono', monospace", size: 10.5 }, callback: (v) => fmt(v) } },
+      },
+    },
+  });
+}
+
+/* ---------- models ---------- */
+function renderModels() {
+  const list = STATS.byModel.slice(0, 12);
+  const key = list.map((m) => m.model + m.i).join();
+  if (key === lastModelKey) return;
+  lastModelKey = key;
+  const max = list.length ? sumB(list[0]) : 1;
+  document.getElementById('modelList').innerHTML = list.map((m) => {
+    const tot = sumB(m);
+    return `<div class="model-row">
+      <span class="swatch" style="background:${TC[m.tool]}"></span>
+      <span class="model-name"><span class="tool-tag" style="background:rgba(${TC_RGB[m.tool]},.08);color:${TC[m.tool]}">${m.tool}</span>${esc(m.model)}</span>
+      <span class="model-nums"><span class="t">${fmt(tot)}</span><span class="c">${fmtCost(m.cost)}</span></span>
+      <span class="model-bar"><i style="width:${(tot / max * 100).toFixed(1)}%;background:${TC[m.tool]}"></i></span>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- heatmap ---------- */
+function renderHeatmap() {
+  const key = hmTool + ':' + STATS.generatedAt;
+  if (key === lastHmKey) return;
+  lastHmKey = key;
+  let arr;
+  if (hmTool === 'all') arr = STATS.hours.dsh.map((v, i) => v + STATS.hours.codex[i] + STATS.hours.claude[i]);
+  else arr = STATS.hours[hmTool];
+  const max = Math.max(...arr, 1);
+  const rgb = hmTool === 'all' ? '19,19,22' : TC_RGB[hmTool];
+
+  const grid = document.getElementById('hmGrid');
+  let html = '';
+  for (let wd = 0; wd < 7; wd++) {
+    html += `<span class="hm-lab">${WD[wd]}</span>`;
+    for (let h = 0; h < 24; h++) {
+      const v = arr[wd * 24 + h];
+      const a = v > 0 ? 0.14 + 0.86 * Math.sqrt(v / max) : 0;
+      html += `<div class="hm-cell" title="${WD[wd]} ${String(h).padStart(2, '0')}:00 · ${fmt(v)}" style="background:${v > 0 ? `rgba(${rgb},${a.toFixed(2)})` : 'var(--line-soft)'}"></div>`;
+    }
+  }
+  grid.innerHTML = html;
+
+  document.getElementById('hmHours').innerHTML = '<span></span>' + Array.from({ length: 24 }, (_, h) => `<span>${h % 3 === 0 ? h : ''}</span>`).join('');
+
+  let peak = 0, pi = 0;
+  arr.forEach((v, i) => { if (v > peak) { peak = v; pi = i; } });
+  document.getElementById('hmNote').textContent = peak > 0
+    ? `峰值时段：${WD[Math.floor(pi / 24)]} ${String(pi % 24).padStart(2, '0')}:00（${fmt(peak)} tokens）· 颜色越深用量越高`
+    : '暂无数据';
+}
+
+/* ---------- sessions ---------- */
+function renderSessions() {
+  const cutoff = sessRange > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - sessRange); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })() : null;
+  const list = STATS.sessions.filter((s) =>
+    (sessTool === 'all' || s.tool === sessTool) &&
+    (!cutoff || (s.lastDate || '') >= cutoff)
+  ).slice(0, 80);
+  const key = sessTool + sessRange + list.length + (list[0] ? list[0].tot : 0);
+  if (key === lastSessKey) return;
+  lastSessKey = key;
+
+  document.getElementById('sessBody').innerHTML = list.length ? list.map((s, i) => `
+    <tr class="row" data-i="${i}">
+      <td class="num">${s.lastDate || ''}</td>
+      <td><span class="pill"><i class="swatch" style="background:${TC[s.tool]}"></i>${s.tool}</span></td>
+      <td class="msg" style="max-width:150px">${esc(s.model)}</td>
+      <td class="num">${s.calls}</td>
+      <td class="num" style="font-weight:600;color:var(--ink)">${fmt(s.tot)}</td>
+      <td class="num">${fmtCost(s.cost)}</td>
+      <td class="msg">${esc(s.first) || '<span style="color:var(--ink-3)">（无首条消息）</span>'}</td>
+    </tr>
+    <tr class="detail" data-d="${i}" hidden><td colspan="7"><div class="detail-inner">
+      <div><span class="k">首条消息</span><span class="full">${esc(s.first) || '—'}</span></div>
+      <div style="margin-top:4px"><span class="k">区间</span>${s.firstDate} ~ ${s.lastDate} <span class="k" style="margin-left:14px">上下文</span>${esc(s.ctx) || '—'} <span class="k" style="margin-left:14px">文件</span>${esc(s.file)}</div>
+    </div></td></tr>`).join('')
+    : '<tr><td colspan="7" style="text-align:center;color:var(--ink-3);padding:28px">该筛选下暂无会话</td></tr>';
+
+  document.querySelectorAll('#sessBody tr.row').forEach((tr) => {
+    tr.onclick = () => {
+      const d = document.querySelector(`#sessBody tr.detail[data-d="${tr.dataset.i}"]`);
+      if (d) d.hidden = !d.hidden;
+    };
+  });
+}
+
+/* ---------- comp ---------- */
+function renderComp() {
+  const rows = TOOLS.map((tool) => {
+    const b = STATS.totals[tool], total = sumB(b), cost = STATS.cost.byTool[tool];
+    if (!total) return '';
+    const seg = (v, c) => v > 0 ? `<i style="width:${(v / total * 100).toFixed(2)}%;background:${c}"></i>` : '';
+    return `<tr>
+      <td><span class="pill"><i class="swatch" style="background:${TC[tool]}"></i>${tool}</span></td>
+      <td>${fmt(b.i)}</td><td>${fmt(b.cr)}</td><td>${fmt(b.cw)}</td><td>${fmt(b.o)}</td>
+      <td class="total">${fmt(total)}</td><td>${fmtCost(cost)}</td>
+      <td><div class="stackbar">${seg(b.i, BUCKETS.i)}${seg(b.cr, BUCKETS.cr)}${seg(b.cw, BUCKETS.cw)}${seg(b.o, BUCKETS.o)}</div></td>
+    </tr>`;
+  }).filter(Boolean);
+  const all = STATS.totals.all;
+  document.getElementById('compBody').innerHTML = rows.join('') + `
+    <tr><td><span class="pill">合计</span></td>
+    <td>${fmt(all.i)}</td><td>${fmt(all.cr)}</td><td>${fmt(all.cw)}</td><td>${fmt(all.o)}</td>
+    <td class="total">${fmt(sumB(all))}</td><td class="total">${fmtCost(STATS.cost.total)}</td><td></td></tr>`;
+}
+
+function renderAll() {
+  renderKpis(); renderTrend(); renderModels(); renderHeatmap(); renderSessions(); renderComp();
+}
+
+/* ---------- prices modal ---------- */
+function clientPriceFor(model, defaults, perM) {
+  if (perM[model]) return perM[model];
+  if (defaults[model]) return defaults[model];
+  for (const [k, v] of Object.entries(defaults)) {
+    if (k.endsWith('*') && model.startsWith(k.slice(0, -1))) return v;
+  }
+  return defaults.default || { i: 1, o: 5, cr: 0.1, cw: 1 };
+}
+async function openPrices() {
+  const res = await fetch('/api/prices');
+  PRICES = await res.json();
+  const models = [...new Set(STATS.byModel.map((m) => m.model))].slice(0, 16);
+  document.getElementById('pricesBody').innerHTML = models.map((m) => {
+    const p = clientPriceFor(m, PRICES.defaults, PRICES.perM);
+    return `<tr data-model="${esc(m)}">
+      <td>${esc(m)}</td>
+      <td><input data-f="i" type="number" step="any" value="${p.i ?? 0}"></td>
+      <td><input data-f="o" type="number" step="any" value="${p.o ?? 0}"></td>
+      <td><input data-f="cr" type="number" step="any" value="${p.cr ?? 0}"></td>
+      <td><input data-f="cw" type="number" step="any" value="${p.cw ?? 0}"></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('pricesModal').hidden = false;
+}
+document.getElementById('pricesBtn').onclick = openPrices;
+document.getElementById('pricesCancel').onclick = () => { document.getElementById('pricesModal').hidden = true; };
+document.getElementById('pricesModal').addEventListener('click', (e) => { if (e.target.id === 'pricesModal') e.target.hidden = true; });
+document.getElementById('pricesSave').onclick = async () => {
+  const perM = {};
+  document.querySelectorAll('#pricesBody tr').forEach((tr) => {
+    const m = tr.dataset.model, o = {};
+    tr.querySelectorAll('input').forEach((inp) => { o[inp.dataset.f] = Number(inp.value) || 0; });
+    perM[m] = o;
+  });
+  await fetch('/api/prices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perM }) });
+  document.getElementById('pricesModal').hidden = true;
+  lastTrendKey = lastModelKey = lastSessKey = lastHmKey = '';
+  refresh();
+};
+
+/* ---------- chips ---------- */
+function bindChips(id, cb) {
+  document.getElementById(id).addEventListener('click', (e) => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    document.querySelectorAll(`#${id} .chip`).forEach((c) => c.classList.remove('active'));
+    b.classList.add('active');
+    cb(b);
+  });
+}
+bindChips('trendChips', (b) => { trendRange = Number(b.dataset.range); lastTrendKey = ''; renderTrend(); });
+bindChips('hmChips', (b) => { hmTool = b.dataset.tool; lastHmKey = ''; renderHeatmap(); });
+bindChips('sessToolChips', (b) => { sessTool = b.dataset.tool; lastSessKey = ''; renderSessions(); });
+bindChips('sessRangeChips', (b) => { sessRange = Number(b.dataset.range); lastSessKey = ''; renderSessions(); });
+
+/* ---------- status + loop ---------- */
+function setStatus(state, text) {
+  document.getElementById('statusDot').className = 'dot' + (state === 'busy' ? ' busy' : state === 'off' ? ' off' : '');
+  document.getElementById('statusText').textContent = text;
+}
+async function refresh() {
+  try {
+    const data = await (await fetch('/api/stats')).json();
+    if (data.ready && data.stats) {
+      STATS = data.stats;
+      renderAll();
+      const t = data.lastScan ? new Date(data.lastScan.at).toLocaleTimeString('zh-CN', { hour12: false }) : '';
+      setStatus(data.scanning ? 'busy' : '', `${t} 扫描 ${data.lastScan.ms}ms · ${STATS.fileCount.dsh}+${STATS.fileCount.codex}+${STATS.fileCount.claude} 文件`);
+    } else setStatus(data.scanning ? 'busy' : 'off', data.scanning ? '首次扫描中…' : '等待扫描…');
+  } catch { setStatus('off', '无法连接服务'); }
+}
+document.getElementById('rescanBtn').onclick = () => { setStatus('busy', '触发重扫…'); fetch('/api/rescan').catch(() => {}); setTimeout(refresh, 1500); };
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>

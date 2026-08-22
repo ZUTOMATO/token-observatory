@@ -1,0 +1,6 @@
+# local scan cache (contains session metadata & message snippets)
+.scan-cache.json
+# runtime
+server.log
+# personal price overrides
+prices.json
