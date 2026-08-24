@@ -9,143 +9,254 @@
 <script src="vendor/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #FAFAFA;
+    --bg: #F4F6FB;
     --panel: #FFFFFF;
-    --line: #E8E8EC;
-    --line-soft: #F2F2F5;
-    --ink: #131316;
-    --ink-2: #55555E;
-    --ink-3: #8E8E98;
-    --dsh: #2563EB;
-    --codex: #059669;
-    --claude: #D97706;
-    --radius: 10px;
-    --shadow: 0 1px 2px rgba(19,19,22,.04);
+    --line: #E9EDF5;
+    --line-soft: #F1F4FA;
+    --ink: #0F172A;
+    --ink-2: #475569;
+    --ink-3: #8A94A6;
+    --dsh: #5B7CFA;
+    --dsh-deep: #3D5AF1;
+    --codex: #10B981;
+    --codex-deep: #059669;
+    --claude: #F59E0B;
+    --claude-deep: #D97706;
+    --radius: 18px;
+    --shadow: 0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.08);
+    --shadow-lg: 0 2px 4px rgba(15,23,42,.05), 0 18px 44px -18px rgba(15,23,42,.18);
     --font-d: "Space Grotesk", "PingFang SC", "Microsoft YaHei", sans-serif;
     --font-m: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--font-d); font-size: 14px; line-height: 1.5; }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 26px 24px 72px; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--font-d);
+    font-size: 14px; line-height: 1.5; min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(900px 480px at 8% -6%, rgba(91,124,250,.14), transparent 60%),
+      radial-gradient(820px 460px at 96% 4%, rgba(16,185,129,.12), transparent 55%),
+      radial-gradient(700px 420px at 78% 98%, rgba(245,158,11,.10), transparent 55%);
+    background-attachment: fixed;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 24px 72px; }
   .mono { font-family: var(--font-m); font-variant-numeric: tabular-nums; }
 
-  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  .panel, .kpi, header { animation: rise .4s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+  .card, .kpi, header { animation: rise .5s cubic-bezier(.22,.8,.35,1) both; }
+  .kpi:nth-child(2), .panel:nth-child(2) { animation-delay: .05s; }
+  .kpi:nth-child(3), .panel:nth-child(3) { animation-delay: .1s; }
+  .kpi:nth-child(4), .panel:nth-child(4) { animation-delay: .15s; }
+  .kpi:nth-child(5), .panel:nth-child(5) { animation-delay: .2s; }
+  .kpi:nth-child(6), .panel:nth-child(6) { animation-delay: .25s; }
 
-  /* header */
-  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--ink); display: grid; place-items: center; grid-auto-flow: column; gap: 3px; align-items: end; padding: 7px 0; flex: none; }
-  .logo i { display: block; width: 3px; border-radius: 2px; background: #fff; }
-  .logo i:nth-child(1) { height: 8px; opacity: .55; }
-  .logo i:nth-child(2) { height: 13px; opacity: .8; }
-  .logo i:nth-child(3) { height: 19px; }
-  h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-  .subtitle { font-size: 12px; color: var(--ink-3); margin-top: 1px; }
-  .head-actions { display: flex; align-items: center; gap: 10px; }
-  .status { display: inline-flex; align-items: center; gap: 7px; font: 400 11.5px var(--font-m); color: var(--ink-3); }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--codex); }
-  .dot.busy { background: var(--claude); animation: pulse 1s infinite; }
-  .dot.off { background: var(--ink-3); }
-  @keyframes pulse { 50% { opacity: .3; } }
-  .btn { font: 500 12px var(--font-d); color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; transition: all .15s; }
-  .btn:hover { color: var(--ink); border-color: var(--ink-3); }
-  .btn:active { transform: translateY(1px); }
-  .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
-  .btn.primary:hover { opacity: .85; }
+  /* ---------- header ---------- */
+  header {
+    position: sticky; top: 12px; z-index: 40;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: rgba(255,255,255,.72); backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.9); border-radius: 20px;
+    box-shadow: var(--shadow-lg); padding: 14px 20px; margin-bottom: 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: 12px; flex: none;
+    background: linear-gradient(135deg, #0F172A 0%, #334155 100%);
+    display: grid; place-items: center; grid-auto-flow: column; gap: 3px; align-items: end;
+    padding: 8px 9px; box-shadow: 0 6px 16px -6px rgba(15,23,42,.5);
+  }
+  .logo i { display: block; width: 3.5px; border-radius: 3px; background: #fff; }
+  .logo i:nth-child(1) { height: 9px; opacity: .5; }
+  .logo i:nth-child(2) { height: 14px; opacity: .8; }
+  .logo i:nth-child(3) { height: 20px; }
+  h1 { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+  .subtitle { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  .head-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .status {
+    display: inline-flex; align-items: center; gap: 8px;
+    font: 400 11.5px var(--font-m); color: var(--ink-3);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--codex); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+  .dot.busy { background: var(--claude); box-shadow: 0 0 0 3px rgba(245,158,11,.18); animation: pulse 1s infinite; }
+  .dot.off { background: var(--ink-3); box-shadow: none; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font: 500 12.5px var(--font-d); color: var(--ink-2);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 11px;
+    padding: 7px 13px; cursor: pointer; transition: all .18s; box-shadow: var(--shadow);
+  }
+  .btn svg { width: 14px; height: 14px; }
+  .btn:hover { color: var(--ink); border-color: #C7CFDD; transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+  .btn:active { transform: translateY(0); }
+  .btn.primary { background: linear-gradient(135deg, #0F172A, #334155); color: #fff; border-color: transparent; }
+  .btn.primary:hover { opacity: .9; }
 
-  /* KPI */
-  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
-  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px 13px; }
-  .kpi .label { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
-  .kpi .value { margin-top: 7px; font: 600 27px/1 var(--font-m); letter-spacing: -0.03em; }
-  .kpi .sub { margin-top: 6px; font: 400 11px var(--font-m); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .kpi .sub .up { color: var(--claude); } .kpi .sub .down { color: var(--codex); }
+  /* ---------- KPI ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 16px; }
+  .kpi {
+    position: relative; overflow: hidden;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 16px 15px;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .kpi::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+    background: var(--accent, linear-gradient(90deg, var(--dsh), var(--codex)));
+  }
+  .kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .kpi .kpi-top { display: flex; align-items: center; justify-content: space-between; }
+  .kpi .label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .kpi .icon {
+    width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none;
+    background: var(--tint); color: var(--iconc);
+  }
+  .kpi .icon svg { width: 16px; height: 16px; }
+  .kpi .value {
+    margin-top: 10px; font: 700 25px/1 var(--font-m); letter-spacing: -0.03em;
+    background: linear-gradient(120deg, var(--ink) 30%, var(--iconc, var(--dsh-deep)));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .kpi .sub { margin-top: 7px; font: 400 10.5px var(--font-m); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .sub .up { color: var(--claude-deep); } .kpi .sub .down { color: var(--codex-deep); }
 
-  /* panels */
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 12px; }
-  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-  .panel-head h2 { font-size: 13.5px; font-weight: 600; }
+  /* ---------- panels ---------- */
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 16px;
+    transition: box-shadow .2s ease;
+  }
+  .panel:hover { box-shadow: var(--shadow-lg); }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 15px; }
+  .panel-head h2 { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+  .panel-head h2 .em { width: 8px; height: 8px; border-radius: 3px; background: linear-gradient(135deg, var(--dsh), var(--codex)); }
   .panel-head .hint { font-size: 11px; color: var(--ink-3); }
-  .grid-main { display: grid; grid-template-columns: minmax(0,1fr) 400px; gap: 12px; align-items: stretch; }
-  @media (max-width: 1020px) { .grid-main { grid-template-columns: 1fr; } .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .grid-main { display: grid; grid-template-columns: minmax(0,1fr) 400px; gap: 16px; align-items: stretch; }
+  .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; align-items: stretch; }
+  @media (max-width: 1180px) { .grid-main, .grid-2 { grid-template-columns: 1fr; } .kpis { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, 1fr); } .wrap { padding: 14px 14px 60px; } header { top: 8px; } }
 
-  .chips { display: inline-flex; gap: 4px; }
-  .chip { font: 500 11px var(--font-m); color: var(--ink-3); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 3.5px 10px; cursor: pointer; transition: all .15s; }
-  .chip:hover { color: var(--ink-2); border-color: var(--ink-3); }
-  .chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .chip {
+    font: 500 11px var(--font-m); color: var(--ink-3); background: none;
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; cursor: pointer; transition: all .16s;
+  }
+  .chip:hover { color: var(--ink-2); border-color: #C7CFDD; }
+  .chip.active { background: var(--ink); border-color: var(--ink); color: #fff; box-shadow: 0 4px 10px -4px rgba(15,23,42,.4); }
 
-  .legend { display: inline-flex; gap: 14px; font-size: 11.5px; color: var(--ink-2); }
+  .legend { display: inline-flex; gap: 14px; font-size: 11.5px; color: var(--ink-2); flex-wrap: wrap; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .swatch { width: 9px; height: 9px; border-radius: 3px; }
 
-  .chart-box { position: relative; height: 320px; }
+  .chart-box { position: relative; height: 300px; }
+  .chart-box.sm { height: 240px; }
 
-  /* models */
-  .model-row { display: grid; grid-template-columns: 10px minmax(0,1fr) auto; gap: 4px 10px; align-items: center; padding: 7.5px 0; border-bottom: 1px solid var(--line-soft); }
+  /* ---------- tool share ---------- */
+  .share-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: center; }
+  .share-chart { position: relative; height: 190px; }
+  .share-legend { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+  .share-item { display: flex; align-items: center; gap: 9px; font-size: 12.5px; }
+  .share-item .sw { width: 10px; height: 10px; border-radius: 3.5px; flex: none; }
+  .share-item .nm { color: var(--ink-2); flex: 1; }
+  .share-item .vl { font: 600 12.5px var(--font-m); }
+  .share-item .pc { font: 400 10.5px var(--font-m); color: var(--ink-3); }
+
+  /* ---------- models ---------- */
+  .model-row { display: grid; grid-template-columns: 10px minmax(0,1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
   .model-row:last-child { border-bottom: 0; }
   .model-name { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tool-tag { font: 500 10px var(--font-m); padding: 1.5px 5px; border-radius: 4px; margin-right: 7px; }
+  .tool-tag { font: 500 10px var(--font-m); padding: 2px 6px; border-radius: 6px; margin-right: 7px; }
   .model-nums { text-align: right; }
   .model-nums .t { font: 600 12.5px var(--font-m); }
   .model-nums .c { font: 400 10.5px var(--font-m); color: var(--ink-3); margin-left: 7px; }
-  .model-bar { grid-column: 2 / 4; height: 3px; border-radius: 2px; background: var(--line-soft); overflow: hidden; }
-  .model-bar i { display: block; height: 100%; }
+  .model-bar { grid-column: 2 / 4; height: 4px; border-radius: 3px; background: var(--line-soft); overflow: hidden; }
+  .model-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--dsh), var(--codex)); transition: width .4s ease; }
 
-  /* heatmap */
-  .hm-grid { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 3px; align-items: center; }
+  /* ---------- heatmap ---------- */
+  .hm-scroll { overflow-x: auto; }
+  .hm-grid { display: grid; grid-template-columns: 36px repeat(24, 26px); gap: 3px; align-items: center; min-width: max-content; }
   .hm-lab { font: 500 10px var(--font-m); color: var(--ink-3); }
-  .hm-cell { height: 20px; border-radius: 4px; background: var(--line-soft); transition: transform .1s; }
-  .hm-cell:hover { transform: scale(1.12); }
-  .hm-hours { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 3px; margin-top: 5px; }
-  .hm-hours span { font: 400 9.5px var(--font-m); color: var(--ink-3); text-align: center; }
+  .hm-cell { height: 22px; border-radius: 5px; background: var(--line-soft); transition: transform .12s, filter .12s; }
+  .hm-cell:hover { transform: scale(1.16); filter: brightness(.95); }
+  .hm-hours { display: grid; grid-template-columns: 36px repeat(24, 26px); gap: 3px; margin-top: 6px; min-width: max-content; }
+  .hm-hours span { font: 400 9px var(--font-m); color: var(--ink-3); text-align: center; }
   .hm-note { margin-top: 10px; font-size: 11px; color: var(--ink-3); }
 
-  /* sessions */
-  .sess-scroll { max-height: 540px; overflow: auto; border: 1px solid var(--line-soft); border-radius: 8px; }
+  /* ---------- sessions ---------- */
+  .sess-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .search {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1px solid var(--line); border-radius: 10px; padding: 5px 11px; background: var(--bg);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .search:focus-within { border-color: var(--dsh); box-shadow: 0 0 0 3px rgba(91,124,250,.14); }
+  .search svg { width: 13px; height: 13px; color: var(--ink-3); flex: none; }
+  .search input { border: 0; outline: 0; background: transparent; font: 400 12px var(--font-d); color: var(--ink); width: 150px; }
+  .search input::placeholder { color: var(--ink-3); }
+  .sess-scroll { max-height: 560px; overflow: auto; border: 1px solid var(--line-soft); border-radius: 12px; }
   table.sess { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  table.sess th { position: sticky; top: 0; z-index: 1; background: var(--panel); text-align: left; font: 600 10.5px var(--font-m); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 9px 12px; border-bottom: 1px solid var(--line); }
-  table.sess td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.sess th {
+    position: sticky; top: 0; z-index: 1; background: #FBFCFE; text-align: left;
+    font: 600 10px var(--font-m); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+    padding: 10px 12px; border-bottom: 1px solid var(--line); user-select: none;
+  }
+  table.sess th.sortable { cursor: pointer; transition: color .12s; }
+  table.sess th.sortable:hover { color: var(--ink); }
+  table.sess th.sortable .arr { opacity: .5; font-size: 9px; margin-left: 3px; }
+  table.sess th.sortable.on .arr { opacity: 1; color: var(--dsh); }
+  table.sess td { padding: 9.5px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.sess tbody tr:nth-child(even) td { background: rgba(244,246,251,.45); }
   table.sess tr:last-child td { border-bottom: 0; }
   table.sess tbody tr.row { cursor: pointer; transition: background .12s; }
-  table.sess tbody tr.row:hover { background: var(--line-soft); }
+  table.sess tbody tr.row:hover td { background: rgba(91,124,250,.06); }
   td.num { text-align: right; font-family: var(--font-m); font-variant-numeric: tabular-nums; white-space: nowrap; }
   th.num { text-align: right; }
-  .msg { color: var(--ink-2); max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  tr.detail td { background: var(--line-soft); }
+  .msg { color: var(--ink-2); max-width: 430px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr.detail td { background: var(--line-soft) !important; }
   .detail-inner { font-size: 12px; color: var(--ink-2); line-height: 1.7; padding: 2px 0; }
-  .detail-inner .k { color: var(--ink-3); font-family: var(--font-m); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; margin-right: 6px; }
+  .detail-inner .k { color: var(--ink-3); font-family: var(--font-m); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; margin-right: 6px; }
   .detail-inner .full { white-space: normal; }
   .pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; white-space: nowrap; }
 
-  /* comp table */
+  /* ---------- comp ---------- */
   table.comp { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  table.comp th { text-align: right; font: 600 10.5px var(--font-m); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  table.comp th { text-align: right; font: 600 10px var(--font-m); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 8px 10px; border-bottom: 1px solid var(--line); }
   table.comp th:first-child { text-align: left; }
   table.comp td { text-align: right; padding: 10px; border-bottom: 1px solid var(--line-soft); font-family: var(--font-m); font-variant-numeric: tabular-nums; color: var(--ink-2); }
   table.comp td:first-child { text-align: left; }
   table.comp tr:last-child td { border-bottom: 0; }
+  table.comp tbody tr:hover td { background: rgba(244,246,251,.6); }
   td.total { color: var(--ink); font-weight: 600; }
-  .stackbar { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: var(--line-soft); min-width: 110px; }
+  .stackbar { display: flex; height: 8px; border-radius: 5px; overflow: hidden; background: var(--line-soft); min-width: 120px; }
   .stackbar i { display: block; height: 100%; }
 
-  footer { margin-top: 24px; font-size: 11.5px; color: var(--ink-3); line-height: 1.8; }
-  footer code { font-family: var(--font-m); font-size: 10.5px; background: var(--line-soft); padding: 1px 5px; border-radius: 4px; }
+  footer { margin-top: 28px; font-size: 11.5px; color: var(--ink-3); line-height: 1.9; }
+  footer code { font-family: var(--font-m); font-size: 10px; background: rgba(15,23,42,.05); padding: 1px 6px; border-radius: 5px; }
 
-  /* modal */
-  .backdrop { position: fixed; inset: 0; background: rgba(19,19,22,.35); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 50; }
+  /* ---------- modal ---------- */
+  .backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.4); backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 60; animation: pop .18s ease both; }
   .backdrop[hidden] { display: none; }
-  .modal { width: min(680px, 92vw); max-height: 82vh; overflow: auto; background: var(--panel); border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(19,19,22,.18); padding: 22px 24px; }
+  .modal { width: min(680px, 92vw); max-height: 82vh; overflow: auto; background: var(--panel); border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(15,23,42,.25); padding: 24px 26px; }
   .modal h3 { font-size: 15px; font-weight: 700; }
   .modal .note { font-size: 11.5px; color: var(--ink-3); margin: 6px 0 14px; line-height: 1.6; }
   table.prices { width: 100%; border-collapse: collapse; font-size: 12px; }
-  table.prices th { text-align: right; font: 600 10px var(--font-m); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); padding: 5px 6px; border-bottom: 1px solid var(--line); }
+  table.prices th { text-align: right; font: 600 10px var(--font-m); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); padding: 6px 6px; border-bottom: 1px solid var(--line); }
   table.prices th:first-child { text-align: left; }
-  table.prices td { padding: 5px 6px; border-bottom: 1px solid var(--line-soft); }
+  table.prices td { padding: 6px; border-bottom: 1px solid var(--line-soft); }
   table.prices td:first-child { font-family: var(--font-m); font-size: 11.5px; color: var(--ink-2); }
-  table.prices input { width: 84px; font: 400 11.5px var(--font-m); padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--bg); }
-  table.prices input:focus { outline: 2px solid rgba(37,99,235,.25); border-color: var(--dsh); }
+  table.prices input { width: 84px; font: 400 11.5px var(--font-m); padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--bg); }
+  table.prices input:focus { outline: 2px solid rgba(91,124,250,.22); border-color: var(--dsh); }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #C9D2E0; border-radius: 8px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #ADB9CC; background-clip: content-box; border: 3px solid transparent; }
+  ::-webkit-scrollbar-track { background: transparent; }
 </style>
 </head>
 <body>
@@ -161,23 +272,52 @@
     </div>
     <div class="head-actions">
       <span class="status"><span class="dot off" id="statusDot"></span><span id="statusText">连接中…</span></span>
-      <button class="btn" id="pricesBtn">单价设置</button>
-      <button class="btn" id="rescanBtn">重扫</button>
+      <button class="btn" id="pricesBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9.5 9c0-1.1 1.1-1.8 2.5-1.8s2.5.7 2.5 1.8-1 1.6-2.5 1.8-2.5.7-2.5 1.8 1.1 1.8 2.5 1.8 2.5-.7 2.5-1.8"/></svg>
+        单价设置
+      </button>
+      <button class="btn" id="rescanBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 3v6h-6"/></svg>
+        重扫
+      </button>
+      <button class="btn" id="exportBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        导出
+      </button>
     </div>
   </header>
 
   <section class="kpis">
-    <div class="kpi"><div class="label">累计 Tokens</div><div class="value" id="kTotal">–</div><div class="sub" id="kTotalSub"></div></div>
-    <div class="kpi"><div class="label">估算费用</div><div class="value" id="kCost">–</div><div class="sub" id="kCostSub">USD · 单价可设置</div></div>
-    <div class="kpi"><div class="label">今日</div><div class="value" id="kToday">–</div><div class="sub" id="kTodaySub"></div></div>
-    <div class="kpi"><div class="label">近 7 天</div><div class="value" id="kWeek">–</div><div class="sub" id="kWeekSub"></div></div>
-    <div class="kpi"><div class="label">缓存命中率</div><div class="value" id="kCache">–</div><div class="sub">cache_read ÷ (input + cache_read)</div></div>
+    <div class="kpi" style="--accent:linear-gradient(90deg,#5B7CFA,#8B5CF6);--tint:rgba(91,124,250,.12);--iconc:#3D5AF1">
+      <div class="kpi-top"><div class="label">累计 Tokens</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M8 8h8v8H8z"/></svg></div></div>
+      <div class="value" id="kTotal">–</div><div class="sub" id="kTotalSub"></div>
+    </div>
+    <div class="kpi" style="--accent:linear-gradient(90deg,#10B981,#06B6D4);--tint:rgba(16,185,129,.12);--iconc:#059669">
+      <div class="kpi-top"><div class="label">估算费用</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9.5 9c0-1.1 1.1-1.8 2.5-1.8s2.5.7 2.5 1.8-1 1.6-2.5 1.8-2.5.7-2.5 1.8 1.1 1.8 2.5 1.8 2.5-.7 2.5-1.8"/></svg></div></div>
+      <div class="value" id="kCost">–</div><div class="sub" id="kCostSub">USD · 单价可设置</div>
+    </div>
+    <div class="kpi" style="--accent:linear-gradient(90deg,#F59E0B,#F97316);--tint:rgba(245,158,11,.14);--iconc:#D97706">
+      <div class="kpi-top"><div class="label">今日</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></div></div>
+      <div class="value" id="kToday">–</div><div class="sub" id="kTodaySub"></div>
+    </div>
+    <div class="kpi" style="--accent:linear-gradient(90deg,#8B5CF6,#EC4899);--tint:rgba(139,92,246,.12);--iconc:#7C3AED">
+      <div class="kpi-top"><div class="label">近 7 天</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div></div>
+      <div class="value" id="kWeek">–</div><div class="sub" id="kWeekSub"></div>
+    </div>
+    <div class="kpi" style="--accent:linear-gradient(90deg,#06B6D4,#3B82F6);--tint:rgba(6,182,212,.12);--iconc:#0891B2">
+      <div class="kpi-top"><div class="label">缓存命中率</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div></div>
+      <div class="value" id="kCache">–</div><div class="sub">cache_read ÷ (input + cache_read)</div>
+    </div>
+    <div class="kpi" style="--accent:linear-gradient(90deg,#F43F5E,#F59E0B);--tint:rgba(244,63,94,.10);--iconc:#E11D48">
+      <div class="kpi-top"><div class="label">活跃 / 会话</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="4"/></svg></div></div>
+      <div class="value" id="kAct">–</div><div class="sub" id="kActSub"></div>
+    </div>
   </section>
 
   <div class="grid-main">
     <section class="panel">
       <div class="panel-head">
-        <h2>每日用量趋势</h2>
+        <h2><span class="em"></span>每日用量趋势</h2>
         <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
           <span class="legend">
             <span><i class="swatch" style="background:var(--dsh)"></i>dsh</span>
@@ -197,14 +337,59 @@
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>模型排行</h2><span class="hint">tokens · 估算费用</span></div>
+      <div class="panel-head"><h2><span class="em" style="background:linear-gradient(135deg,#10B981,#06B6D4)"></span>估算费用趋势</h2><span class="hint">USD / 天</span></div>
+      <div class="chart-box sm"><canvas id="costChart"></canvas></div>
+    </section>
+  </div>
+
+  <div class="grid-main">
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="em" style="background:linear-gradient(135deg,#5B7CFA,#8B5CF6)"></span>工具占比</h2><span class="hint">按 tokens · 环形内为费用占比</span>
+      </div>
+      <div class="share-wrap">
+        <div class="share-chart"><canvas id="shareChart"></canvas></div>
+        <div class="share-legend" id="shareLegend"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="em" style="background:linear-gradient(135deg,#06B6D4,#3B82F6)"></span>缓存命中率趋势</h2><span class="hint">cache_read ÷ (input + cache_read)</span>
+      </div>
+      <div class="chart-box sm"><canvas id="cacheChart"></canvas></div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="em" style="background:linear-gradient(135deg,#F59E0B,#F97316)"></span>模型趋势</h2>
+        <span class="chips" id="modelTrendChips">
+          <button class="chip" data-range="14">14d</button>
+          <button class="chip active" data-range="30">30d</button>
+          <button class="chip" data-range="90">90d</button>
+          <button class="chip" data-range="0">全部</button>
+        </span>
+      </div>
+      <div class="chart-box sm"><canvas id="modelTrendChart"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="em" style="background:linear-gradient(135deg,#8B5CF6,#EC4899)"></span>模型排行</h2>
+        <span class="chips" id="modelChips">
+          <button class="chip active" data-sort="tokens">按 Tokens</button>
+          <button class="chip" data-sort="cost">按费用</button>
+        </span>
+      </div>
       <div id="modelList"></div>
     </section>
   </div>
 
   <section class="panel">
     <div class="panel-head">
-      <h2>活跃时段热力图</h2>
+      <h2><span class="em" style="background:linear-gradient(135deg,#EC4899,#F43F5E)"></span>活跃时段热力图</h2>
       <span class="chips" id="hmChips">
         <button class="chip active" data-tool="all">全部</button>
         <button class="chip" data-tool="dsh">dsh</button>
@@ -212,15 +397,21 @@
         <button class="chip" data-tool="claude">claude</button>
       </span>
     </div>
-    <div class="hm-grid" id="hmGrid"></div>
-    <div class="hm-hours" id="hmHours"></div>
+    <div class="hm-scroll">
+      <div class="hm-grid" id="hmGrid"></div>
+      <div class="hm-hours" id="hmHours"></div>
+    </div>
     <div class="hm-note" id="hmNote"></div>
   </section>
 
   <section class="panel">
     <div class="panel-head">
-      <h2>会话排行</h2>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <h2><span class="em" style="background:linear-gradient(135deg,#5B7CFA,#10B981)"></span>会话排行</h2>
+      <div class="sess-tools">
+        <span class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="sessSearch" placeholder="搜索消息 / 模型 / 上下文…" autocomplete="off">
+        </span>
         <span class="chips" id="sessToolChips">
           <button class="chip active" data-tool="all">全部</button>
           <button class="chip" data-tool="dsh">dsh</button>
@@ -237,16 +428,24 @@
     </div>
     <div class="sess-scroll">
       <table class="sess">
-        <thead><tr><th>日期</th><th>工具</th><th>模型</th><th class="num">调用</th><th class="num">Tokens</th><th class="num">费用</th><th>首条消息</th></tr></thead>
+        <thead><tr>
+          <th class="sortable" data-sort="lastDate">日期<span class="arr">↓</span></th>
+          <th>工具</th>
+          <th>模型</th>
+          <th class="num sortable" data-sort="calls">调用<span class="arr"></span></th>
+          <th class="num sortable on" data-sort="tot">Tokens<span class="arr">↓</span></th>
+          <th class="num sortable" data-sort="cost">费用<span class="arr"></span></th>
+          <th>首条消息</th>
+        </tr></thead>
         <tbody id="sessBody"></tbody>
       </table>
     </div>
   </section>
 
   <section class="panel">
-    <div class="panel-head"><h2>分工具 Token 构成</h2><span class="hint">Input 为去除缓存读取后的净输入</span></div>
+    <div class="panel-head"><h2><span class="em" style="background:linear-gradient(135deg,#8B5CF6,#EC4899)"></span>分工具 Token 构成</h2><span class="hint">Input 为去除缓存读取后的净输入</span></div>
     <table class="comp">
-      <thead><tr><th>工具</th><th>Input</th><th>Cache Read</th><th>Cache Write</th><th>Output</th><th>Total</th><th>费用</th><th style="width:150px">构成</th></tr></thead>
+      <thead><tr><th>工具</th><th>Input</th><th>Cache Read</th><th>Cache Write</th><th>Output</th><th>Total</th><th>费用</th><th style="width:170px">构成</th></tr></thead>
       <tbody id="compBody"></tbody>
     </table>
   </section>
@@ -275,16 +474,19 @@
 <script>
 'use strict';
 const TOOLS = ['dsh', 'codex', 'claude'];
-const TC = { dsh: '#2563EB', codex: '#059669', claude: '#D97706' };
-const TC_RGB = { dsh: '37,99,235', codex: '5,150,105', claude: '217,119,6' };
-const BUCKETS = { i: '#2563EB', cr: '#93B4F5', cw: '#C9CFDA', o: '#131316' };
+const TC = { dsh: '#5B7CFA', codex: '#10B981', claude: '#F59E0B' };
+const TC_RGB = { dsh: '91,124,250', codex: '16,185,129', claude: '245,158,11' };
+const BUCKETS = { i: '#5B7CFA', cr: '#9DB0F9', cw: '#D5DBEA', o: '#0F172A' };
 const WD = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+const MODEL_COLORS = ['#5B7CFA', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4', '#F43F5E', '#EC4899', '#84CC16', '#0EA5E9', '#A855F7', '#F97316', '#14B8A6'];
 
 let STATS = null;
 let PRICES = null;
-let trendRange = 30, hmTool = 'all', sessRange = 30, sessTool = 'all';
-let dailyChart = null;
-let lastTrendKey = '', lastModelKey = '', lastSessKey = '', lastHmKey = '';
+let trendRange = 30, hmTool = 'all', sessRange = 30, sessTool = 'all', modelSort = 'tokens';
+let modelTrendRange = 30;
+let sessQuery = '', sessSort = 'tot', sessAsc = false;
+let dailyChart = null, costChart = null, shareChart = null, cacheChart = null, modelTrendChart = null;
+let lastTrendKey = '', lastCostKey = '', lastShareKey = '', lastCacheKey = '', lastModelKey = '', lastModelTrendKey = '', lastSessKey = '', lastHmKey = '';
 
 /* ---------- format ---------- */
 const fmt = (n) => {
@@ -317,6 +519,14 @@ function countUp(el, target, formatter) {
   requestAnimationFrame(step);
 }
 
+/* Chart.js shared styling */
+const chartFont = (s) => ({ family: "'JetBrains Mono', monospace", size: s });
+const tooltipOpts = {
+  backgroundColor: 'rgba(15,23,42,.94)', padding: 11, cornerRadius: 10, displayColors: true,
+  boxWidth: 8, boxHeight: 8, boxPadding: 3,
+  titleFont: chartFont(11.5), bodyFont: chartFont(11.5),
+};
+
 /* ---------- KPI ---------- */
 function renderKpis() {
   const s = STATS, all = s.totals.all;
@@ -341,6 +551,10 @@ function renderKpis() {
   document.getElementById('kWeekSub').innerHTML = `${fmtCost(s.byDay.slice(-7).reduce((a, d) => a + d.cost, 0))}${delta}`;
   const denom = all.i + all.cr;
   countUp(document.getElementById('kCache'), denom > 0 ? all.cr / denom * 100 : 0, (v) => v.toFixed(1) + '%');
+
+  const totalFiles = s.fileCount.dsh + s.fileCount.codex + s.fileCount.claude;
+  countUp(document.getElementById('kAct'), s.byDay.length, (v) => fmt(v) + ' 天');
+  document.getElementById('kActSub').textContent = `${totalFiles} 个会话文件`;
 }
 
 /* ---------- daily trend ---------- */
@@ -368,12 +582,12 @@ function renderTrend() {
         ...TOOLS.map((tool) => ({
           type: 'bar', label: tool, stack: 's',
           data: days.map((d) => sumB(d[tool])),
-          backgroundColor: TC[tool], borderRadius: 2, maxBarThickness: 24,
+          backgroundColor: TC[tool], borderRadius: 3, maxBarThickness: 22,
         })),
         {
           type: 'line', label: '7d MA', data: ma,
-          borderColor: '#131316', borderWidth: 1.5, pointRadius: 0,
-          tension: 0.35, borderDash: [5, 4],
+          borderColor: '#0F172A', borderWidth: 2, pointRadius: 0,
+          tension: 0.4, borderDash: [6, 5],
         },
       ],
     },
@@ -383,9 +597,7 @@ function renderTrend() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#131316', padding: 10, cornerRadius: 8, displayColors: true, boxWidth: 8, boxHeight: 8, boxPadding: 3,
-          titleFont: { family: "'JetBrains Mono', monospace", size: 11.5 },
-          bodyFont: { family: "'JetBrains Mono', monospace", size: 11.5 },
+          ...tooltipOpts,
           callbacks: {
             label: (it) => it.dataset.type === 'line' ? ` 均线: ${fmt(it.raw)}` : ` ${it.dataset.label}: ${fmt(it.raw)}`,
             footer: (its) => {
@@ -396,8 +608,210 @@ function renderTrend() {
         },
       },
       scales: {
-        x: { stacked: true, grid: { display: false }, border: { color: '#E8E8EC' }, ticks: { color: '#8E8E98', font: { family: "'JetBrains Mono', monospace", size: 10.5 }, maxRotation: 0, autoSkipPadding: 14 } },
-        y: { stacked: true, grid: { color: '#F2F2F5' }, border: { display: false }, ticks: { color: '#8E8E98', font: { family: "'JetBrains Mono', monospace", size: 10.5 }, callback: (v) => fmt(v) } },
+        x: { stacked: true, grid: { display: false }, border: { color: '#E9EDF5' }, ticks: { color: '#8A94A6', font: chartFont(10.5), maxRotation: 0, autoSkipPadding: 16 } },
+        y: { stacked: true, grid: { color: '#F1F4FA' }, border: { display: false }, ticks: { color: '#8A94A6', font: chartFont(10.5), callback: (v) => fmt(v) } },
+      },
+    },
+  });
+}
+
+/* ---------- cost trend ---------- */
+function renderCost() {
+  const days = STATS.byDay;
+  const key = days.length + ':' + (days[0] ? days[0].date : '') + ':' + (days[days.length - 1] ? days[days.length - 1].cost : 0);
+  if (key === lastCostKey && costChart) return;
+  lastCostKey = key;
+  if (!days.length) return;
+  const ctx = document.getElementById('costChart').getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 240);
+  grad.addColorStop(0, 'rgba(16,185,129,.28)');
+  grad.addColorStop(1, 'rgba(16,185,129,0)');
+  if (costChart) costChart.destroy();
+  costChart = new Chart(document.getElementById('costChart'), {
+    type: 'line',
+    data: {
+      labels: days.map((d) => d.date.slice(5)),
+      datasets: [{
+        label: '费用', data: days.map((d) => d.cost), borderColor: '#10B981', borderWidth: 2,
+        backgroundColor: grad, fill: true, tension: 0.38, pointRadius: 0, pointHoverRadius: 4,
+        pointBackgroundColor: '#059669',
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...tooltipOpts,
+          callbacks: { label: (it) => ` 费用: ${fmtCost(it.raw)}` },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, border: { color: '#E9EDF5' }, ticks: { color: '#8A94A6', font: chartFont(10), maxRotation: 0, autoSkipPadding: 18 } },
+        y: { grid: { color: '#F1F4FA' }, border: { display: false }, ticks: { color: '#8A94A6', font: chartFont(10), callback: (v) => '$' + (v >= 1 ? v.toFixed(0) : v.toFixed(2)) } },
+      },
+    },
+  });
+}
+
+/* ---------- tool share donut ---------- */
+function renderShare() {
+  const key = STATS.totals.dsh.i + STATS.totals.codex.i + STATS.totals.claude.i + STATS.generatedAt;
+  if (key === lastShareKey && shareChart) return;
+  lastShareKey = key;
+  const rows = TOOLS.map((t) => ({ t, v: sumB(STATS.totals[t]), cost: STATS.cost.byTool[t] })).filter((r) => r.v > 0);
+  const total = rows.reduce((a, r) => a + r.v, 0);
+  if (shareChart) shareChart.destroy();
+  if (!rows.length) {
+    document.getElementById('shareLegend').innerHTML = '<div style="color:var(--ink-3);font-size:12px;padding:10px 0">暂无数据</div>';
+    return;
+  }
+  const ctx = document.getElementById('shareChart').getContext('2d');
+  shareChart = new Chart(document.getElementById('shareChart'), {
+    type: 'doughnut',
+    data: {
+      labels: rows.map((r) => r.t),
+      datasets: [{
+        data: rows.map((r) => r.v),
+        backgroundColor: rows.map((r) => TC[r.t]),
+        borderColor: '#fff', borderWidth: 3, hoverOffset: 6, cutout: '68%',
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { animateRotate: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...tooltipOpts,
+          callbacks: {
+            label: (it) => ` ${it.label}: ${fmt(it.raw)} (${(it.raw / total * 100).toFixed(1)}%)`,
+            footer: (its) => `费用: ${fmtCost(STATS.cost.byTool[its[0].label])}`,
+          },
+        },
+      },
+    },
+  });
+  // center text
+  const center = document.createElement('div');
+  center.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none';
+  center.innerHTML = `<div style="font:700 20px var(--font-m);color:var(--ink)">${fmt(total)}</div><div style="font:500 9.5px var(--font-m);color:var(--ink-3);letter-spacing:.05em">TOKENS</div>`;
+  const wrap = document.getElementById('shareChart').parentNode;
+  wrap.querySelector('.share-center')?.remove();
+  center.className = 'share-center';
+  wrap.appendChild(center);
+
+  const legend = rows.map((r) => `
+    <div class="share-item">
+      <span class="sw" style="background:${TC[r.t]}"></span>
+      <span class="nm">${r.t}</span>
+      <span class="vl">${fmt(r.v)}</span>
+      <span class="pc">${(r.v / total * 100).toFixed(1)}% · ${fmtCost(r.cost)}</span>
+    </div>`).join('');
+  document.getElementById('shareLegend').innerHTML = legend;
+}
+
+/* ---------- cache hit rate trend ---------- */
+function renderCache() {
+  const days = STATS.byDay;
+  const key = days.length + ':' + (days[0] ? days[0].date : '') + ':' + (days[days.length - 1] ? (days[days.length - 1].dsh.cr + days[days.length - 1].codex.cr) : 0);
+  if (key === lastCacheKey && cacheChart) return;
+  lastCacheKey = key;
+  if (!days.length) return;
+  const data = days.map((d) => {
+    const cr = d.dsh.cr + d.codex.cr + d.claude.cr;
+    const i = d.dsh.i + d.codex.i + d.claude.i;
+    return (cr + i) > 0 ? cr / (cr + i) * 100 : null;
+  });
+  const ctx = document.getElementById('cacheChart').getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 240);
+  grad.addColorStop(0, 'rgba(6,182,212,.25)');
+  grad.addColorStop(1, 'rgba(6,182,212,0)');
+  if (cacheChart) cacheChart.destroy();
+  cacheChart = new Chart(document.getElementById('cacheChart'), {
+    type: 'line',
+    data: {
+      labels: days.map((d) => d.date.slice(5)),
+      datasets: [{
+        label: '命中率', data, borderColor: '#06B6D4', borderWidth: 2,
+        backgroundColor: grad, fill: true, tension: 0.38, pointRadius: 0, pointHoverRadius: 4,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...tooltipOpts,
+          callbacks: { label: (it) => ` 命中率: ${it.raw == null ? '—' : it.raw.toFixed(1) + '%'}` },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, border: { color: '#E9EDF5' }, ticks: { color: '#8A94A6', font: chartFont(10), maxRotation: 0, autoSkipPadding: 18 } },
+        y: { grid: { color: '#F1F4FA' }, border: { display: false }, min: 0, max: 100, ticks: { color: '#8A94A6', font: chartFont(10), callback: (v) => v + '%' } },
+      },
+    },
+  });
+}
+
+/* ---------- model trend (per-day per-model, stacked) ---------- */
+function renderModelTrend() {
+  let days = STATS.byDayModel || [];
+  if (modelTrendRange > 0) days = days.slice(-modelTrendRange);
+  const key = modelTrendRange + ':' + days.length + ':' + (days[0] ? days[0].date : '') + ':' + (days[days.length - 1] ? days[days.length - 1].models[0] && days[days.length - 1].models[0].model : '');
+  if (key === lastModelTrendKey && modelTrendChart) return;
+  lastModelTrendKey = key;
+  const el = document.getElementById('modelTrendChart');
+  if (!days.length) {
+    if (modelTrendChart) { modelTrendChart.destroy(); modelTrendChart = null; }
+    return;
+  }
+  // top models by total across the selected range
+  const totals = new Map();
+  for (const d of days) for (const m of d.models) totals.set(m.model, (totals.get(m.model) || 0) + m.i + m.o + m.cr + m.cw);
+  const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map((e) => e[0]);
+  const color = (model) => MODEL_COLORS[top.indexOf(model) % MODEL_COLORS.length];
+
+  const datasets = top.map((model) => ({
+    label: model, stack: 'm',
+    data: days.map((d) => {
+      const mm = d.models.find((x) => x.model === model);
+      return mm ? mm.i + mm.o + mm.cr + mm.cw : 0;
+    }),
+    backgroundColor: color(model), borderRadius: 3, maxBarThickness: 22,
+  }));
+
+  if (modelTrendChart) modelTrendChart.destroy();
+  modelTrendChart = new Chart(el, {
+    type: 'bar',
+    data: { labels: days.map((d) => d.date.slice(5)), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true, position: 'bottom', labels: {
+            boxWidth: 8, boxHeight: 8, boxPadding: 4, usePointStyle: true, pointStyle: 'circle',
+            font: { family: "'JetBrains Mono', monospace", size: 9.5 }, color: '#475569', padding: 10,
+          },
+        },
+        tooltip: {
+          ...tooltipOpts,
+          callbacks: {
+            label: (it) => ` ${it.dataset.label}: ${fmt(it.raw)}`,
+            footer: (its) => {
+              const d = days[its[0].dataIndex];
+              const total = its.reduce((a, it) => a + it.raw, 0);
+              return `合计 ${fmt(total)} · ${d.date}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, border: { color: '#E9EDF5' }, ticks: { color: '#8A94A6', font: chartFont(9.5), maxRotation: 0, autoSkipPadding: 18 } },
+        y: { stacked: true, grid: { color: '#F1F4FA' }, border: { display: false }, ticks: { color: '#8A94A6', font: chartFont(10), callback: (v) => fmt(v) } },
       },
     },
   });
@@ -405,18 +819,23 @@ function renderTrend() {
 
 /* ---------- models ---------- */
 function renderModels() {
-  const list = STATS.byModel.slice(0, 12);
-  const key = list.map((m) => m.model + m.i).join();
+  let list = STATS.byModel;
+  if (modelSort === 'cost') list = [...list].sort((a, b) => b.cost - a.cost);
+  else list = [...list].sort((a, b) => (b.i + b.o + b.cr + b.cw) - (a.i + a.o + a.cr + a.cw));
+  list = list.slice(0, 12);
+  const key = modelSort + ':' + list.map((m) => m.model + m.cost).join();
   if (key === lastModelKey) return;
   lastModelKey = key;
   const max = list.length ? sumB(list[0]) : 1;
+  const maxCost = list.length ? Math.max(...list.map((m) => m.cost), 1e-9) : 1;
   document.getElementById('modelList').innerHTML = list.map((m) => {
     const tot = sumB(m);
+    const w = modelSort === 'cost' ? m.cost / maxCost : tot / max;
     return `<div class="model-row">
       <span class="swatch" style="background:${TC[m.tool]}"></span>
-      <span class="model-name"><span class="tool-tag" style="background:rgba(${TC_RGB[m.tool]},.08);color:${TC[m.tool]}">${m.tool}</span>${esc(m.model)}</span>
-      <span class="model-nums"><span class="t">${fmt(tot)}</span><span class="c">${fmtCost(m.cost)}</span></span>
-      <span class="model-bar"><i style="width:${(tot / max * 100).toFixed(1)}%;background:${TC[m.tool]}"></i></span>
+      <span class="model-name"><span class="tool-tag" style="background:rgba(${TC_RGB[m.tool]},.10);color:${TC_RGB[m.tool] === '245,158,11' ? '#B45309' : TC[m.tool]}">${m.tool}</span>${esc(m.model)}</span>
+      <span class="model-nums"><span class="t">${modelSort === 'cost' ? fmtCost(m.cost) : fmt(tot)}</span><span class="c">${modelSort === 'cost' ? fmt(tot) : fmtCost(m.cost)}</span></span>
+      <span class="model-bar"><i style="width:${(w * 100).toFixed(1)}%;background:${modelSort === 'cost' ? 'linear-gradient(90deg,#10B981,#06B6D4)' : 'linear-gradient(90deg,#5B7CFA,#8B5CF6)'}"></i></span>
     </div>`;
   }).join('');
 }
@@ -430,7 +849,7 @@ function renderHeatmap() {
   if (hmTool === 'all') arr = STATS.hours.dsh.map((v, i) => v + STATS.hours.codex[i] + STATS.hours.claude[i]);
   else arr = STATS.hours[hmTool];
   const max = Math.max(...arr, 1);
-  const rgb = hmTool === 'all' ? '19,19,22' : TC_RGB[hmTool];
+  const rgb = hmTool === 'all' ? '15,23,42' : TC_RGB[hmTool];
 
   const grid = document.getElementById('hmGrid');
   let html = '';
@@ -438,7 +857,7 @@ function renderHeatmap() {
     html += `<span class="hm-lab">${WD[wd]}</span>`;
     for (let h = 0; h < 24; h++) {
       const v = arr[wd * 24 + h];
-      const a = v > 0 ? 0.14 + 0.86 * Math.sqrt(v / max) : 0;
+      const a = v > 0 ? 0.10 + 0.90 * Math.sqrt(v / max) : 0;
       html += `<div class="hm-cell" title="${WD[wd]} ${String(h).padStart(2, '0')}:00 · ${fmt(v)}" style="background:${v > 0 ? `rgba(${rgb},${a.toFixed(2)})` : 'var(--line-soft)'}"></div>`;
     }
   }
@@ -456,11 +875,19 @@ function renderHeatmap() {
 /* ---------- sessions ---------- */
 function renderSessions() {
   const cutoff = sessRange > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - sessRange); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })() : null;
-  const list = STATS.sessions.filter((s) =>
+  const q = sessQuery.trim().toLowerCase();
+  let list = STATS.sessions.filter((s) =>
     (sessTool === 'all' || s.tool === sessTool) &&
-    (!cutoff || (s.lastDate || '') >= cutoff)
-  ).slice(0, 80);
-  const key = sessTool + sessRange + list.length + (list[0] ? list[0].tot : 0);
+    (!cutoff || (s.lastDate || '') >= cutoff) &&
+    (!q || (s.first || '').toLowerCase().includes(q) || (s.model || '').toLowerCase().includes(q) || (s.ctx || '').toLowerCase().includes(q) || (s.file || '').toLowerCase().includes(q))
+  );
+  list.sort((a, b) => {
+    const va = a[sessSort], vb = b[sessSort];
+    const r = (typeof va === 'string' ? (va < vb ? -1 : va > vb ? 1 : 0) : va - vb);
+    return sessAsc ? -r : r;
+  });
+  list = list.slice(0, 80);
+  const key = sessTool + sessRange + q + sessSort + sessAsc + list.length + (list[0] ? list[0].tot : 0);
   if (key === lastSessKey) return;
   lastSessKey = key;
 
@@ -478,7 +905,7 @@ function renderSessions() {
       <div><span class="k">首条消息</span><span class="full">${esc(s.first) || '—'}</span></div>
       <div style="margin-top:4px"><span class="k">区间</span>${s.firstDate} ~ ${s.lastDate} <span class="k" style="margin-left:14px">上下文</span>${esc(s.ctx) || '—'} <span class="k" style="margin-left:14px">文件</span>${esc(s.file)}</div>
     </div></td></tr>`).join('')
-    : '<tr><td colspan="7" style="text-align:center;color:var(--ink-3);padding:28px">该筛选下暂无会话</td></tr>';
+    : '<tr><td colspan="7" style="text-align:center;color:var(--ink-3);padding:30px">该筛选下暂无会话</td></tr>';
 
   document.querySelectorAll('#sessBody tr.row').forEach((tr) => {
     tr.onclick = () => {
@@ -509,7 +936,7 @@ function renderComp() {
 }
 
 function renderAll() {
-  renderKpis(); renderTrend(); renderModels(); renderHeatmap(); renderSessions(); renderComp();
+  renderKpis(); renderTrend(); renderCost(); renderShare(); renderCache(); renderModelTrend(); renderModels(); renderHeatmap(); renderSessions(); renderComp();
 }
 
 /* ---------- prices modal ---------- */
@@ -549,9 +976,30 @@ document.getElementById('pricesSave').onclick = async () => {
   });
   await fetch('/api/prices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perM }) });
   document.getElementById('pricesModal').hidden = true;
-  lastTrendKey = lastModelKey = lastSessKey = lastHmKey = '';
+  lastTrendKey = lastCostKey = lastShareKey = lastCacheKey = lastModelKey = lastModelTrendKey = lastSessKey = lastHmKey = '';
   refresh();
 };
+
+/* ---------- export ---------- */
+function downloadCSV() {
+  const cutoff = sessRange > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - sessRange); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })() : null;
+  const q = sessQuery.trim().toLowerCase();
+  const list = STATS.sessions.filter((s) =>
+    (sessTool === 'all' || s.tool === sessTool) &&
+    (!cutoff || (s.lastDate || '') >= cutoff) &&
+    (!q || (s.first || '').toLowerCase().includes(q) || (s.model || '').toLowerCase().includes(q) || (s.ctx || '').toLowerCase().includes(q) || (s.file || '').toLowerCase().includes(q))
+  );
+  const head = ['tool', 'model', 'firstDate', 'lastDate', 'calls', 'tokens', 'cost_usd', 'first_message', 'context', 'file'];
+  const rows = list.map((s) => [s.tool, s.model, s.firstDate, s.lastDate, s.calls, s.tot, (s.cost || 0).toFixed(4), (s.first || '').replace(/[\r\n,]/g, ' '), (s.ctx || ''), s.file]);
+  const csv = [head, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `token-observatory-${todayStr()}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+document.getElementById('exportBtn').onclick = downloadCSV;
 
 /* ---------- chips ---------- */
 function bindChips(id, cb) {
@@ -565,8 +1013,25 @@ function bindChips(id, cb) {
 }
 bindChips('trendChips', (b) => { trendRange = Number(b.dataset.range); lastTrendKey = ''; renderTrend(); });
 bindChips('hmChips', (b) => { hmTool = b.dataset.tool; lastHmKey = ''; renderHeatmap(); });
+bindChips('modelChips', (b) => { modelSort = b.dataset.sort; lastModelKey = ''; renderModels(); });
+bindChips('modelTrendChips', (b) => { modelTrendRange = Number(b.dataset.range); lastModelTrendKey = ''; renderModelTrend(); });
 bindChips('sessToolChips', (b) => { sessTool = b.dataset.tool; lastSessKey = ''; renderSessions(); });
 bindChips('sessRangeChips', (b) => { sessRange = Number(b.dataset.range); lastSessKey = ''; renderSessions(); });
+
+/* session search + sortable headers */
+document.getElementById('sessSearch').addEventListener('input', (e) => { sessQuery = e.target.value; lastSessKey = ''; renderSessions(); });
+document.querySelectorAll('table.sess th.sortable').forEach((th) => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (sessSort === k) sessAsc = !sessAsc;
+    else { sessSort = k; sessAsc = false; }
+    document.querySelectorAll('table.sess th.sortable').forEach((x) => { x.classList.remove('on'); x.querySelector('.arr').textContent = ''; });
+    th.classList.add('on');
+    th.querySelector('.arr').textContent = sessAsc ? '↑' : '↓';
+    lastSessKey = '';
+    renderSessions();
+  });
+});
 
 /* ---------- status + loop ---------- */
 function setStatus(state, text) {

@@ -361,6 +361,7 @@ function scan() {
 function buildSnapshot() {
   const totals = { all: newB(), dsh: newB(), codex: newB(), claude: newB() };
   const byDay = new Map();
+  const byDayModel = new Map(); // date -> Map(model -> [i,o,cr,cw])
   const byModel = new Map();
   const hours = { dsh: new Array(168).fill(0), codex: new Array(168).fill(0), claude: new Array(168).fill(0) };
   const costByDay = new Map();
@@ -382,6 +383,11 @@ function buildSnapshot() {
       let day = byDay.get(date);
       if (!day) byDay.set(date, day = { dsh: newB(), codex: newB(), claude: newB() });
       for (let i = 0; i < 4; i++) day[tool][i] += b[i];
+      let dm = byDayModel.get(date);
+      if (!dm) byDayModel.set(date, dm = new Map());
+      let mb = dm.get(model);
+      if (!mb) dm.set(model, mb = newB());
+      for (let i = 0; i < 4; i++) mb[i] += b[i];
       const mk = tool + '\u0000' + model;
       let mm = byModel.get(mk);
       if (!mm) byModel.set(mk, mm = { tool, model, b: newB() });
@@ -419,6 +425,15 @@ function buildSnapshot() {
     .map((m) => ({ tool: m.tool, model: m.model, ...b2o(m.b), cost: m.cost || 0 }))
     .sort((a, b) => (b.i + b.o + b.cr + b.cw) - (a.i + a.o + a.cr + a.cw));
 
+  const dayModels = [...byDayModel.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([date, m]) => {
+      const ms = [...m.entries()]
+        .map(([model, b]) => ({ model, ...b2o(b) }))
+        .sort((a, b) => (b.i + b.o + b.cr + b.cw) - (a.i + a.o + a.cr + a.cw));
+      return { date, models: ms.slice(0, 6) }; // top models per day for the trend chart
+    });
+
   return {
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     generatedAt: new Date().toISOString(),
@@ -429,6 +444,7 @@ function buildSnapshot() {
     },
     fileCount,
     byDay: days,
+    byDayModel: dayModels,
     byModel: models,
     hours,
     sessions: sessions.slice(0, 400),
