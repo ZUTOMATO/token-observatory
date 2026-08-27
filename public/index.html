@@ -124,6 +124,29 @@
   .kpi .sub { margin-top: 7px; font: 400 10.5px var(--font-m); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kpi .sub .up { color: var(--claude-deep); } .kpi .sub .down { color: var(--codex-deep); }
 
+  /* ---------- totals composition ---------- */
+  .tot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .tot-cell {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
+    box-shadow: var(--shadow); padding: 15px 16px 14px;
+  }
+  .tot-cell .top { display: flex; align-items: center; justify-content: space-between; }
+  .tot-cell .lab { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .tot-cell .icon { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; }
+  .tot-cell .icon svg { width: 13px; height: 13px; }
+  .tot-cell .val { margin-top: 9px; font: 700 24px/1 var(--font-m); letter-spacing: -0.03em; }
+  .tot-cell .pct { font: 400 11px var(--font-m); color: var(--ink-3); margin-top: 5px; }
+  .tot-cell .per { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+  .tot-cell .per span { font: 400 10.5px var(--font-m); color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+  .tot-cell .per i.swatch { width: 7px; height: 7px; border-radius: 2px; }
+  .tot-bar-wrap { margin-top: 16px; }
+  .tot-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line-soft); }
+  .tot-bar i { display: block; height: 100%; }
+  .tot-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 9px; font: 400 11px var(--font-m); color: var(--ink-3); }
+  .tot-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .tot-legend i.swatch { width: 8px; height: 8px; border-radius: 2px; }
+  @media (max-width: 900px) { .tot-grid { grid-template-columns: repeat(2, 1fr); } }
+
   /* ---------- panels ---------- */
   .panel {
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
@@ -311,6 +334,43 @@
     <div class="kpi" style="--accent:linear-gradient(90deg,#F43F5E,#F59E0B);--tint:rgba(244,63,94,.10);--iconc:#E11D48">
       <div class="kpi-top"><div class="label">活跃 / 会话</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="4"/></svg></div></div>
       <div class="value" id="kAct">–</div><div class="sub" id="kActSub"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2><span class="em" style="background:linear-gradient(135deg,#5B7CFA,#0F172A)"></span>总量构成</h2>
+      <span class="hint">累计 Input（净输入）/ Output / 缓存 合计</span>
+    </div>
+    <div class="tot-grid">
+      <div class="tot-cell">
+        <div class="top"><div class="lab">Input · 净输入</div><div class="icon" style="background:rgba(91,124,250,.12);color:#3D5AF1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div></div>
+        <div class="val" id="totI">–</div>
+        <div class="pct" id="totIPct"></div>
+        <div class="per" id="totIPer"></div>
+      </div>
+      <div class="tot-cell">
+        <div class="top"><div class="lab">Output</div><div class="icon" style="background:rgba(15,23,42,.10);color:#0F172A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V7"/><path d="m17 12-5-5-5 5"/><path d="M5 3h14"/></svg></div></div>
+        <div class="val" id="totO">–</div>
+        <div class="pct" id="totOPct"></div>
+        <div class="per" id="totOPer"></div>
+      </div>
+      <div class="tot-cell">
+        <div class="top"><div class="lab">Cache Read</div><div class="icon" style="background:rgba(157,176,249,.25);color:#3D5AF1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div></div>
+        <div class="val" id="totCR">–</div>
+        <div class="pct" id="totCRPct"></div>
+        <div class="per" id="totCRPer"></div>
+      </div>
+      <div class="tot-cell">
+        <div class="top"><div class="lab">Cache Write</div><div class="icon" style="background:rgba(213,219,234,.6);color:#64748B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div></div>
+        <div class="val" id="totCW">–</div>
+        <div class="pct" id="totCWPct"></div>
+        <div class="per" id="totCWPer"></div>
+      </div>
+    </div>
+    <div class="tot-bar-wrap">
+      <div class="tot-bar" id="totBar"></div>
+      <div class="tot-legend" id="totLegend"></div>
     </div>
   </section>
 
@@ -935,8 +995,34 @@ function renderComp() {
     <td class="total">${fmt(sumB(all))}</td><td class="total">${fmtCost(STATS.cost.total)}</td><td></td></tr>`;
 }
 
+/* ---------- totals composition ---------- */
+function renderTotals() {
+  const all = STATS.totals.all, grand = sumB(all);
+  const cells = [
+    { id: 'totI', key: 'i' }, { id: 'totO', key: 'o' },
+    { id: 'totCR', key: 'cr' }, { id: 'totCW', key: 'cw' },
+  ];
+  for (const { id, key } of cells) {
+    const v = all[key] || 0;
+    countUp(document.getElementById(id), v, fmt);
+    document.getElementById(id + 'Pct').textContent = grand > 0 ? (v / grand * 100).toFixed(1) + '% of 总量' : '';
+    document.getElementById(id + 'Per').innerHTML = TOOLS.map((t) => {
+      const tv = STATS.totals[t][key] || 0;
+      return tv > 0 ? `<span><i class="swatch" style="background:${TC[t]}"></i>${t} ${fmt(tv)}</span>` : '';
+    }).join('');
+  }
+  const segs = [
+    ['i', 'Input', BUCKETS.i], ['o', 'Output', BUCKETS.o],
+    ['cr', 'Cache Read', BUCKETS.cr], ['cw', 'Cache Write', BUCKETS.cw],
+  ];
+  document.getElementById('totBar').innerHTML = grand > 0 ? segs.map(([k, lab, c]) =>
+    `<i style="width:${(all[k] / grand * 100).toFixed(2)}%;background:${c}" title="${lab} ${fmt(all[k])}"></i>`).join('') : '';
+  document.getElementById('totLegend').innerHTML = segs.map(([k, lab, c]) =>
+    `<span><i class="swatch" style="background:${c}"></i>${lab} ${(grand > 0 ? (all[k] / grand * 100).toFixed(1) + '% · ' : '') + fmt(all[k])}</span>`).join('');
+}
+
 function renderAll() {
-  renderKpis(); renderTrend(); renderCost(); renderShare(); renderCache(); renderModelTrend(); renderModels(); renderHeatmap(); renderSessions(); renderComp();
+  renderKpis(); renderTotals(); renderTrend(); renderCost(); renderShare(); renderCache(); renderModelTrend(); renderModels(); renderHeatmap(); renderSessions(); renderComp();
 }
 
 /* ---------- prices modal ---------- */
