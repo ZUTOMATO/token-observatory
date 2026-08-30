@@ -127,7 +127,7 @@ function parseDsh(text, coll) {
   let pendingDates = null;
   let lastModel = 'unknown';
   for (const line of text.split('\n')) {
-    if (!line.includes('"assistant/')) continue;
+    if (!line.includes('"assistant/') && !line.includes('"user/message"')) continue;
     let d;
     try { d = JSON.parse(line); } catch { continue; }
     const data = d.data || {};
@@ -285,9 +285,9 @@ let lastScan = null;
 function loadCache() {
   try {
     const raw = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-    if (raw && raw.v === 2 && raw.files) return raw;
+    if (raw && raw.v === 3 && raw.files) return raw;
   } catch { /* fresh */ }
-  return { v: 2, files: {} };
+  return { v: 3, files: {} };
 }
 
 function saveCache() {

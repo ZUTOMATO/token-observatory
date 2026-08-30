@@ -944,7 +944,7 @@ function renderSessions() {
   list.sort((a, b) => {
     const va = a[sessSort], vb = b[sessSort];
     const r = (typeof va === 'string' ? (va < vb ? -1 : va > vb ? 1 : 0) : va - vb);
-    return sessAsc ? -r : r;
+    return sessAsc ? r : -r;
   });
   list = list.slice(0, 80);
   const key = sessTool + sessRange + q + sessSort + sessAsc + list.length + (list[0] ? list[0].tot : 0);

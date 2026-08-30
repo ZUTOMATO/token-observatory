@@ -31,7 +31,7 @@ PORT=4000 bash start.sh
 
 ## 说明
 
-- 首次启动全量扫描（约 20s），之后每 60s 增量扫描：按 mtime/size 缓存，只重解变化的文件（`.scan-cache.json`，schema v2）。
+- 首次启动全量扫描（约 20s），之后每 60s 增量扫描：按 mtime/size 缓存，只重解变化的文件（`.scan-cache.json`，schema v3）。
 - 页面每 30s 自动拉取 `/api/stats`；「重扫」按钮触发 `/api/rescan`。
 - 日期与时段按本机时区分桶。
 - 费用为估算：默认单价表是公开参考价（`server.js` 的 `DEFAULT_PRICES`，支持 `deepseek*` 式通配），你的渠道价格不同就在「单价设置」里改，覆盖值存 `prices.json`。
