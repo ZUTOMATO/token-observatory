@@ -118,6 +118,50 @@ function dominantModel(coll) {
   return best || 'unknown';
 }
 
+function projectForContext(ctx) {
+  const raw = String(ctx || '').trim();
+  if (!raw) return { id: 'unknown', name: '未归类', path: null };
+  if (!path.isAbsolute(raw)) return { id: 'label:' + raw, name: raw, path: raw };
+
+  let projectPath = path.normalize(raw);
+  const worktreeMarker = path.sep + '.worktrees' + path.sep;
+  const worktreeAt = projectPath.indexOf(worktreeMarker);
+  if (worktreeAt > 0) {
+    projectPath = projectPath.slice(0, worktreeAt);
+  } else {
+    const contextPath = projectPath;
+    let cur = projectPath;
+    try { if (!fs.statSync(cur).isDirectory()) cur = path.dirname(cur); } catch { /* path may no longer exist */ }
+    while (cur && cur !== path.dirname(cur)) {
+      // A home directory may itself be version-controlled for dotfiles. Do not
+      // absorb every nested workspace into that repository.
+      if (cur === HOME && contextPath !== HOME) break;
+      const marker = path.join(cur, '.git');
+      try {
+        const st = fs.statSync(marker);
+        projectPath = cur;
+        if (st.isFile()) {
+          const m = fs.readFileSync(marker, 'utf8').match(/^gitdir:\s*(.+)$/m);
+          if (m) {
+            const gitDir = path.resolve(cur, m[1].trim());
+            const commonMarker = path.sep + '.git' + path.sep + 'worktrees' + path.sep;
+            const commonAt = gitDir.indexOf(commonMarker);
+            if (commonAt > 0) projectPath = gitDir.slice(0, commonAt);
+          }
+        }
+        break;
+      } catch { /* keep walking */ }
+      cur = path.dirname(cur);
+    }
+  }
+
+  return {
+    id: projectPath,
+    name: projectPath === HOME ? '主目录 · 未归类' : (path.basename(projectPath) || projectPath),
+    path: projectPath,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // parsers
 // ---------------------------------------------------------------------------
@@ -127,11 +171,13 @@ function parseDsh(text, coll) {
   let pendingDates = null;
   let lastModel = 'unknown';
   for (const line of text.split('\n')) {
-    if (!line.includes('"assistant/') && !line.includes('"user/message"')) continue;
+    if (!line.includes('"assistant/') && !line.includes('"user/message"') && !line.includes('"type":"session"')) continue;
     let d;
     try { d = JSON.parse(line); } catch { continue; }
     const data = d.data || {};
-    if (d.type === 'assistant/chunk') {
+    if (d.type === 'session') {
+      if (!coll.ctx && typeof d.cwd === 'string') coll.ctx = d.cwd;
+    } else if (d.type === 'assistant/chunk') {
       const c = data.chunk || {};
       if (c.type === 'usage' && typeof d.time === 'number') {
         const u = c.usage || {};
@@ -192,11 +238,11 @@ function parseCodex(text, coll) {
 
 /** Claude: assistant message usage; ids deduped globally by caller. */
 function parseClaude(text, coll, exclude, claimed, project) {
-  if (!coll.ctx) coll.ctx = project;
   for (const line of text.split('\n')) {
     if (!line.includes('"usage"') && !line.includes('"user"')) continue;
     let d;
     try { d = JSON.parse(line); } catch { continue; }
+    if (!coll.ctx && typeof d.cwd === 'string' && d.cwd) coll.ctx = d.cwd;
     const m = d.message || {};
     if (d.type === 'user') {
       const c = m.content;
@@ -221,6 +267,7 @@ function parseClaude(text, coll, exclude, claimed, project) {
     b[3] = u.cache_creation_input_tokens || 0;
     emit(coll, ms, model, b);
   }
+  if (!coll.ctx) coll.ctx = project;
 }
 
 // ---------------------------------------------------------------------------
@@ -271,10 +318,25 @@ loadPrices();
 // scanner + cache
 // ---------------------------------------------------------------------------
 
+// Windows user profiles auto-discovered under WSL's /mnt/c mount.
+function discoverWindowsUsers() {
+  const out = [];
+  try {
+    if (fs.existsSync('/mnt/c/Users')) {
+      for (const u of fs.readdirSync('/mnt/c/Users')) {
+        const base = '/mnt/c/Users/' + u;
+        if (fs.existsSync(base + '/.codex') || fs.existsSync(base + '/.claude')) out.push(base);
+      }
+    }
+  } catch { /* not a WSL host */ }
+  return out;
+}
+const WIN_USERS = discoverWindowsUsers();
+
 const TOOL_SOURCES = {
-  dsh:    { dir: path.join(HOME, '.dsh', 'sessions'),    match: (n) => n === 'session.jsonl.zstd', zstd: true },
-  codex:  { dir: path.join(HOME, '.codex', 'sessions'),  match: (n) => n.startsWith('rollout-') && n.endsWith('.jsonl'), zstd: false },
-  claude: { dir: path.join(HOME, '.claude', 'projects'), match: (n) => n.endsWith('.jsonl'), zstd: false },
+  dsh:    { dirs: [path.join(HOME, '.dsh', 'sessions')],                                                                  match: (n) => n === 'session.jsonl.zstd', zstd: true },
+  codex:  { dirs: [path.join(HOME, '.codex', 'sessions'), ...WIN_USERS.map((u) => u + '/.codex/sessions')],                match: (n) => n.startsWith('rollout-') && n.endsWith('.jsonl'), zstd: false },
+  claude: { dirs: [path.join(HOME, '.claude', 'projects'), ...WIN_USERS.map((u) => u + '/.claude/projects')],              match: (n) => n.endsWith('.jsonl'), zstd: false },
 };
 
 let cache = loadCache();
@@ -285,9 +347,9 @@ let lastScan = null;
 function loadCache() {
   try {
     const raw = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-    if (raw && raw.v === 3 && raw.files) return raw;
+    if (raw && raw.v === 4 && raw.files) return raw;
   } catch { /* fresh */ }
-  return { v: 3, files: {} };
+  return { v: 4, files: {} };
 }
 
 function saveCache() {
@@ -305,8 +367,10 @@ function scan() {
   for (const tool of Object.keys(TOOL_SOURCES)) {
     const src = TOOL_SOURCES[tool];
     const files = [];
-    for (const f of walk(src.dir, src.match)) {
-      try { files.push({ file: f, st: fs.statSync(f) }); } catch { /* gone */ }
+    for (const dir of src.dirs) {
+      for (const f of walk(dir, src.match)) {
+        try { files.push({ file: f, st: fs.statSync(f) }); } catch { /* gone */ }
+      }
     }
     files.sort((a, b) => a.st.mtimeMs - b.st.mtimeMs);
 
@@ -359,20 +423,52 @@ function scan() {
 }
 
 function buildSnapshot() {
+  const b2o = (b) => ({ i: b[0], o: b[1], cr: b[2], cw: b[3] });
   const totals = { all: newB(), dsh: newB(), codex: newB(), claude: newB() };
   const byDay = new Map();
   const byDayModel = new Map(); // date -> Map(model -> [i,o,cr,cw])
   const byModel = new Map();
+  const byProject = new Map();
+  const worklogByDay = new Map();
   const hours = { dsh: new Array(168).fill(0), codex: new Array(168).fill(0), claude: new Array(168).fill(0) };
   const costByDay = new Map();
   const costByTool = { dsh: 0, codex: 0, claude: 0 };
   const sessions = [];
   const fileCount = { dsh: 0, codex: 0, claude: 0 };
 
+  function projectAgg(info) {
+    let p = byProject.get(info.id);
+    if (!p) {
+      p = {
+        ...info, b: newB(), cost: 0, calls: 0, sessionCount: 0,
+        firstDate: null, lastDate: null,
+        tools: { dsh: newB(), codex: newB(), claude: newB() },
+        toolCost: { dsh: 0, codex: 0, claude: 0 },
+        models: new Map(), sessions: [],
+      };
+      byProject.set(info.id, p);
+    }
+    return p;
+  }
+
+  function worklogProject(date, info) {
+    let day = worklogByDay.get(date);
+    if (!day) worklogByDay.set(date, day = new Map());
+    let p = day.get(info.id);
+    if (!p) {
+      p = { ...info, tot: 0, cost: 0, tools: new Set(), sessionCount: 0, prompts: [] };
+      day.set(info.id, p);
+    }
+    return p;
+  }
+
   for (const [file, e] of Object.entries(cache.files)) {
     const tool = e.tool;
     if (!TOOL_SOURCES[tool]) continue;
     fileCount[tool]++;
+    const projectInfo = projectForContext(e.ctx);
+    const project = projectAgg(projectInfo);
+    let sessionCost = 0;
 
     for (const [k, b] of Object.entries(e.agg)) {
       const sep = k.indexOf('\u0000');
@@ -396,23 +492,48 @@ function buildSnapshot() {
       costByDay.set(date, (costByDay.get(date) || 0) + c);
       costByTool[tool] += c;
       mm.cost = (mm.cost || 0) + c;
+      sessionCost += c;
+
+      for (let i = 0; i < 4; i++) { project.b[i] += b[i]; project.tools[tool][i] += b[i]; }
+      project.cost += c;
+      project.toolCost[tool] += c;
+      if (!project.firstDate || date < project.firstDate) project.firstDate = date;
+      if (!project.lastDate || date > project.lastDate) project.lastDate = date;
+      const pmk = tool + '\u0000' + model;
+      let pm = project.models.get(pmk);
+      if (!pm) project.models.set(pmk, pm = { tool, model, b: newB(), cost: 0 });
+      for (let i = 0; i < 4; i++) pm.b[i] += b[i];
+      pm.cost += c;
+
+      const logProject = worklogProject(date, projectInfo);
+      logProject.tot += sum;
+      logProject.cost += c;
+      logProject.tools.add(tool);
     }
 
     for (const [hk, v] of Object.entries(e.hours)) hours[tool][Number(hk)] += v;
 
     if (e.tot > 0) {
-      let scost = 0;
-      for (const [k, b] of Object.entries(e.agg)) scost += costOf(b, k.slice(k.indexOf('\u0000') + 1));
-      sessions.push({
+      const session = {
         tool, file: path.basename(path.dirname(file)) + '/' + path.basename(file),
+        host: file.startsWith('/mnt/c/') ? 'win' : 'linux',
         first: e.first, firstDate: e.firstDate, lastDate: e.lastDate,
-        tot: e.tot, calls: e.calls, model: e.model, ctx: e.ctx, cost: scost,
-      });
+        tot: e.tot, calls: e.calls, model: e.model, ctx: e.ctx, cost: sessionCost,
+        projectId: projectInfo.id, projectName: projectInfo.name, projectPath: projectInfo.path,
+      };
+      sessions.push(session);
+      project.sessions.push(session);
+      project.sessionCount++;
+      project.calls += e.calls;
+      if (e.lastDate) {
+        const logProject = worklogProject(e.lastDate, projectInfo);
+        logProject.sessionCount++;
+        if (e.first && logProject.prompts.length < 4 && !logProject.prompts.includes(e.first)) logProject.prompts.push(e.first);
+      }
     }
   }
 
   sessions.sort((a, b) => b.tot - a.tot);
-  const b2o = (b) => ({ i: b[0], o: b[1], cr: b[2], cw: b[3] });
 
   const days = [...byDay.entries()]
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
@@ -434,6 +555,35 @@ function buildSnapshot() {
       return { date, models: ms.slice(0, 6) }; // top models per day for the trend chart
     });
 
+  const projects = [...byProject.values()]
+    .map((p) => {
+      p.sessions.sort((a, b) => (b.lastDate || '').localeCompare(a.lastDate || '') || b.tot - a.tot);
+      const models = [...p.models.values()]
+        .map((m) => ({ tool: m.tool, model: m.model, ...b2o(m.b), cost: m.cost }))
+        .sort((a, b) => (b.i + b.o + b.cr + b.cw) - (a.i + a.o + a.cr + a.cw));
+      const tools = Object.fromEntries(Object.keys(TOOL_SOURCES).map((tool) => [tool, {
+        ...b2o(p.tools[tool]), cost: p.toolCost[tool],
+      }]));
+      return {
+        id: p.id, name: p.name, path: p.path,
+        ...b2o(p.b), cost: p.cost, calls: p.calls, sessionCount: p.sessionCount,
+        firstDate: p.firstDate, lastDate: p.lastDate, tools,
+        models: models.slice(0, 8),
+        recentSessions: p.sessions.slice(0, 24),
+      };
+    })
+    .filter((p) => p.i + p.o + p.cr + p.cw > 0)
+    .sort((a, b) => (b.i + b.o + b.cr + b.cw) - (a.i + a.o + a.cr + a.cw));
+
+  const worklog = [...worklogByDay.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([date, p]) => ({
+      date,
+      projects: [...p.values()]
+        .map((x) => ({ ...x, tools: [...x.tools].sort() }))
+        .sort((a, b) => b.tot - a.tot),
+    }));
+
   return {
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     generatedAt: new Date().toISOString(),
@@ -446,8 +596,10 @@ function buildSnapshot() {
     byDay: days,
     byDayModel: dayModels,
     byModel: models,
+    projects,
+    worklog,
     hours,
-    sessions: sessions.slice(0, 400),
+    sessions,
   };
 }
 

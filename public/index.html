@@ -178,6 +178,42 @@
   .chart-box { position: relative; height: 300px; }
   .chart-box.sm { height: 240px; }
 
+  /* ---------- projects + worklog ---------- */
+  .project-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .project-card {
+    width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 14px; background: #FBFCFE; padding: 13px 14px;
+    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+  }
+  .project-card:hover { transform: translateY(-2px); border-color: #C7CFDD; box-shadow: var(--shadow); }
+  .project-card .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .project-card .name { min-width: 0; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .project-card .date { flex: none; font: 500 10px var(--font-m); color: #64748B; }
+  .project-card .path { margin-top: 3px; font: 400 9.5px var(--font-m); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .project-card .nums { display: flex; align-items: baseline; gap: 9px; margin-top: 10px; }
+  .project-card .tokens { font: 700 18px var(--font-m); }
+  .project-card .cost, .project-card .sessions { font: 500 10.5px var(--font-m); color: #64748B; }
+  .project-card .tools { display: flex; gap: 5px; margin-top: 8px; }
+  .mini-tool { font: 500 9px var(--font-m); padding: 2px 6px; border-radius: 6px; }
+  .project-bar { display: flex; width: 100%; height: 5px; margin-top: 9px; border-radius: 4px; overflow: hidden; background: var(--line-soft); }
+  .project-bar i { display: block; height: 100%; }
+  .project-more { display: block; width: 100%; margin-top: 10px; padding: 8px; border: 1px dashed var(--line); border-radius: 10px; background: transparent; color: var(--ink-3); font: 500 10.5px var(--font-m); cursor: pointer; }
+  .project-more[hidden] { display: none; }
+  .project-more:hover { color: var(--ink-2); border-color: #C7CFDD; background: #FBFCFE; }
+
+  .worklog-list { max-height: 500px; overflow: auto; padding-right: 3px; }
+  .work-day { padding: 0 0 14px 18px; margin-left: 6px; border-left: 1px solid var(--line); position: relative; }
+  .work-day:last-child { padding-bottom: 0; }
+  .work-day::before { content: ""; position: absolute; left: -4.5px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--codex); box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
+  .work-date { font: 600 10.5px var(--font-m); color: var(--ink-3); margin-bottom: 7px; }
+  .work-project { display: block; width: 100%; text-align: left; font: inherit; color: inherit; padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: 10px; margin-bottom: 6px; background: #FBFCFE; cursor: pointer; }
+  .work-project:hover { border-color: #C7CFDD; }
+  .work-project .row { display: flex; align-items: center; gap: 7px; }
+  .work-project .nm { min-width: 0; flex: 1; font-size: 12px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .work-project .vl { flex: none; font: 600 10.5px var(--font-m); }
+  .work-project .prompt { display: block; margin-top: 5px; color: var(--ink-3); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 760px) { .project-list { grid-template-columns: 1fr; } }
+
   /* ---------- tool share ---------- */
   .share-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: center; }
   .share-chart { position: relative; height: 190px; }
@@ -218,7 +254,7 @@
   }
   .search:focus-within { border-color: var(--dsh); box-shadow: 0 0 0 3px rgba(91,124,250,.14); }
   .search svg { width: 13px; height: 13px; color: var(--ink-3); flex: none; }
-  .search input { border: 0; outline: 0; background: transparent; font: 400 12px var(--font-d); color: var(--ink); width: 150px; }
+  .search input { border: 0; outline: 0; background: transparent; font: 400 12px var(--font-d); color: var(--ink); width: 190px; }
   .search input::placeholder { color: var(--ink-3); }
   .sess-scroll { max-height: 560px; overflow: auto; border: 1px solid var(--line-soft); border-radius: 12px; }
   table.sess { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -264,8 +300,22 @@
   .backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.4); backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 60; animation: pop .18s ease both; }
   .backdrop[hidden] { display: none; }
   .modal { width: min(680px, 92vw); max-height: 82vh; overflow: auto; background: var(--panel); border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(15,23,42,.25); padding: 24px 26px; }
+  .modal.wide { width: min(880px, 94vw); }
   .modal h3 { font-size: 15px; font-weight: 700; }
   .modal .note { font-size: 11.5px; color: var(--ink-3); margin: 6px 0 14px; line-height: 1.6; }
+  .modal-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .project-detail-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin: 16px 0; }
+  .project-detail-kpis > div { border: 1px solid var(--line); background: var(--bg); border-radius: 11px; padding: 10px 11px; }
+  .project-detail-kpis .lab { font: 600 9px var(--font-m); color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+  .project-detail-kpis .val { margin-top: 4px; font: 700 15px var(--font-m); }
+  .detail-section { margin-top: 16px; }
+  .detail-section h4 { font-size: 12px; margin-bottom: 7px; }
+  .detail-list { border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+  .detail-list .item { display: grid; grid-template-columns: 82px 110px minmax(0,1fr) auto; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); align-items: center; font-size: 11px; }
+  .detail-list .item:last-child { border-bottom: 0; }
+  .detail-list .muted { color: var(--ink-3); font-family: var(--font-m); }
+  .detail-list .message { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 640px) { .project-detail-kpis { grid-template-columns: repeat(2, 1fr); } .detail-list .item { grid-template-columns: 72px minmax(0,1fr) auto; } .detail-list .model { display: none; } }
   table.prices { width: 100%; border-collapse: collapse; font-size: 12px; }
   table.prices th { text-align: right; font: 600 10px var(--font-m); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); padding: 6px 6px; border-bottom: 1px solid var(--line); }
   table.prices th:first-child { text-align: left; }
@@ -447,6 +497,30 @@
     </section>
   </div>
 
+  <div class="grid-main">
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="em" style="background:linear-gradient(135deg,#5B7CFA,#10B981)"></span>项目</h2>
+        <span class="hint" id="projectHint">按 Git 根目录归并</span>
+      </div>
+      <div class="project-list" id="projectList"></div>
+      <button type="button" class="project-more" id="projectMore" hidden></button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="em" style="background:linear-gradient(135deg,#10B981,#F59E0B)"></span>AI 工作日志</h2>
+        <span class="chips" id="worklogChips">
+          <button class="chip" data-range="7">7d</button>
+          <button class="chip active" data-range="14">14d</button>
+          <button class="chip" data-range="30">30d</button>
+          <button class="chip" data-range="0">全部</button>
+        </span>
+      </div>
+      <div class="worklog-list" id="worklogList"></div>
+    </section>
+  </div>
+
   <section class="panel">
     <div class="panel-head">
       <h2><span class="em" style="background:linear-gradient(135deg,#EC4899,#F43F5E)"></span>活跃时段热力图</h2>
@@ -470,7 +544,7 @@
       <div class="sess-tools">
         <span class="search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input id="sessSearch" placeholder="搜索消息 / 模型 / 上下文…" autocomplete="off">
+          <input id="sessSearch" placeholder="搜索消息 / 项目 / 模型…" autocomplete="off">
         </span>
         <span class="chips" id="sessToolChips">
           <button class="chip active" data-tool="all">全部</button>
@@ -491,6 +565,7 @@
         <thead><tr>
           <th class="sortable" data-sort="lastDate">日期<span class="arr">↓</span></th>
           <th>工具</th>
+          <th>项目</th>
           <th>模型</th>
           <th class="num sortable" data-sort="calls">调用<span class="arr"></span></th>
           <th class="num sortable on" data-sort="tot">Tokens<span class="arr">↓</span></th>
@@ -531,6 +606,17 @@
   </div>
 </div>
 
+<div class="backdrop" id="projectModal" hidden>
+  <div class="modal wide">
+    <div class="modal-title-row">
+      <h3 id="projectTitle">项目详情</h3>
+      <button class="btn" id="projectClose">关闭</button>
+    </div>
+    <div class="note mono" id="projectPath"></div>
+    <div id="projectDetail"></div>
+  </div>
+</div>
+
 <script>
 'use strict';
 const TOOLS = ['dsh', 'codex', 'claude'];
@@ -542,11 +628,12 @@ const MODEL_COLORS = ['#5B7CFA', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4', '#F
 
 let STATS = null;
 let PRICES = null;
-let trendRange = 30, hmTool = 'all', sessRange = 30, sessTool = 'all', modelSort = 'tokens';
+let trendRange = 30, hmTool = 'all', sessRange = 30, sessTool = 'all', modelSort = 'tokens', worklogRange = 14;
 let modelTrendRange = 30;
+let showAllProjects = false;
 let sessQuery = '', sessSort = 'tot', sessAsc = false;
 let dailyChart = null, costChart = null, shareChart = null, cacheChart = null, modelTrendChart = null;
-let lastTrendKey = '', lastCostKey = '', lastShareKey = '', lastCacheKey = '', lastModelKey = '', lastModelTrendKey = '', lastSessKey = '', lastHmKey = '';
+let lastTrendKey = '', lastCostKey = '', lastShareKey = '', lastCacheKey = '', lastModelKey = '', lastModelTrendKey = '', lastSessKey = '', lastHmKey = '', lastProjectKey = '', lastWorklogKey = '';
 
 /* ---------- format ---------- */
 const fmt = (n) => {
@@ -614,7 +701,7 @@ function renderKpis() {
 
   const totalFiles = s.fileCount.dsh + s.fileCount.codex + s.fileCount.claude;
   countUp(document.getElementById('kAct'), s.byDay.length, (v) => fmt(v) + ' 天');
-  document.getElementById('kActSub').textContent = `${totalFiles} 个会话文件`;
+  document.getElementById('kActSub').textContent = `${totalFiles} 个会话文件 · ${(s.projects || []).length} 个项目`;
 }
 
 /* ---------- daily trend ---------- */
@@ -900,6 +987,116 @@ function renderModels() {
   }).join('');
 }
 
+/* ---------- projects ---------- */
+function projectTools(p) {
+  return TOOLS.filter((t) => p.tools && p.tools[t] && sumB(p.tools[t]) > 0).map((t) =>
+    `<span class="mini-tool" style="background:rgba(${TC_RGB[t]},.11);color:${TC[t]}">${t}</span>`
+  ).join('');
+}
+
+function projectBar(p) {
+  const total = sumB(p);
+  if (total <= 0) return '';
+  return TOOLS.map((t) => {
+    const value = p.tools && p.tools[t] ? sumB(p.tools[t]) : 0;
+    return value > 0 ? `<i style="width:${(value / total * 100).toFixed(2)}%;background:${TC[t]}" title="${t} ${(value / total * 100).toFixed(1)}%"></i>` : '';
+  }).join('');
+}
+
+function findProject(id) {
+  return (STATS.projects || []).find((p) => p.id === id);
+}
+
+function bindProjectLinks(root) {
+  root.querySelectorAll('[data-project-id]').forEach((el) => {
+    el.onclick = () => {
+      const p = findProject(el.dataset.projectId);
+      if (p) openProject(p);
+    };
+  });
+}
+
+function renderProjects() {
+  const projects = STATS.projects || [];
+  const key = STATS.generatedAt + ':' + projects.length + ':' + showAllProjects;
+  if (key === lastProjectKey) return;
+  lastProjectKey = key;
+  const list = showAllProjects ? projects : projects.slice(0, 8);
+  document.getElementById('projectHint').textContent = `${projects.length} 个项目 · 按 Git 根目录归并`;
+  const root = document.getElementById('projectList');
+  root.innerHTML = list.length ? list.map((p) => {
+    const total = sumB(p);
+    return `<button type="button" class="project-card" data-project-id="${esc(p.id)}">
+      <span class="top"><span class="name">${esc(p.name)}</span><span class="date">${p.lastDate || '—'}</span></span>
+      <span class="path">${esc(p.path) || '未归类'}</span>
+      <span class="nums"><span class="tokens">${fmt(total)}</span><span class="cost">${fmtCost(p.cost)}</span><span class="sessions">${p.sessionCount} 会话</span></span>
+      <span class="tools">${projectTools(p)}</span>
+      <span class="project-bar">${projectBar(p)}</span>
+    </button>`;
+  }).join('') : '<div style="color:var(--ink-3);padding:20px 0">暂无项目数据</div>';
+  bindProjectLinks(root);
+  const more = document.getElementById('projectMore');
+  more.hidden = projects.length <= 8;
+  more.textContent = showAllProjects ? '收起项目' : `查看其余 ${Math.max(0, projects.length - 8)} 个项目`;
+  more.onclick = () => { showAllProjects = !showAllProjects; lastProjectKey = ''; renderProjects(); };
+}
+
+function openProject(p) {
+  document.getElementById('projectTitle').textContent = p.name;
+  document.getElementById('projectPath').textContent = p.path || '未归类';
+  const models = (p.models || []).map((m) => `
+    <div class="item">
+      <span class="muted">${m.tool}</span>
+      <span class="model">${esc(m.model)}</span>
+      <span class="message">${fmt(sumB(m))} tokens</span>
+      <span class="mono">${fmtCost(m.cost)}</span>
+    </div>`).join('');
+  const sessions = (p.recentSessions || []).map((s) => `
+    <div class="item">
+      <span class="muted">${s.lastDate || '—'}</span>
+      <span class="model"><span class="mini-tool" style="background:rgba(${TC_RGB[s.tool]},.11);color:${TC[s.tool]}">${s.tool}</span> ${esc(s.model)}</span>
+      <span class="message" title="${esc(s.first)}">${esc(s.first) || '（无首条消息）'}</span>
+      <span class="mono">${fmt(s.tot)}</span>
+    </div>`).join('');
+  document.getElementById('projectDetail').innerHTML = `
+    <div class="project-detail-kpis">
+      <div><div class="lab">Tokens</div><div class="val">${fmt(sumB(p))}</div></div>
+      <div><div class="lab">估算费用</div><div class="val">${fmtCost(p.cost)}</div></div>
+      <div><div class="lab">会话 / 调用</div><div class="val">${p.sessionCount} / ${fmt(p.calls)}</div></div>
+      <div><div class="lab">活跃区间</div><div class="val" style="font-size:11px">${p.firstDate || '—'}<br>${p.lastDate || '—'}</div></div>
+    </div>
+    <div class="tools">${projectTools(p)}</div>
+    <div class="detail-section"><h4>主要模型</h4><div class="detail-list">${models || '<div class="item">暂无模型数据</div>'}</div></div>
+    <div class="detail-section"><h4>最近会话</h4><div class="detail-list">${sessions || '<div class="item">暂无会话</div>'}</div></div>`;
+  document.getElementById('projectModal').hidden = false;
+}
+
+/* ---------- worklog ---------- */
+function renderWorklog() {
+  let days = STATS.worklog || [];
+  if (worklogRange > 0) {
+    const d = new Date();
+    d.setDate(d.getDate() - worklogRange + 1);
+    const pad = (x) => String(x).padStart(2, '0');
+    const cutoff = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    days = days.filter((x) => x.date >= cutoff);
+  }
+  const key = worklogRange + ':' + STATS.generatedAt + ':' + days.length;
+  if (key === lastWorklogKey) return;
+  lastWorklogKey = key;
+  const root = document.getElementById('worklogList');
+  root.innerHTML = days.length ? days.map((day) => `
+    <div class="work-day">
+      <div class="work-date">${day.date}</div>
+      ${day.projects.slice(0, 8).map((p) => `
+        <button type="button" class="work-project" data-project-id="${esc(p.id)}">
+          <span class="row"><span class="nm">${esc(p.name)}</span>${p.tools.map((t) => `<span class="mini-tool" style="background:rgba(${TC_RGB[t]},.11);color:${TC[t]}">${t}</span>`).join('')}<span class="vl">${fmt(p.tot)}</span></span>
+          ${p.prompts.length ? `<span class="prompt">${esc(p.prompts[0])}</span>` : ''}
+        </button>`).join('')}
+    </div>`).join('') : '<div style="color:var(--ink-3);padding:20px 0">该时间范围内暂无活动</div>';
+  bindProjectLinks(root);
+}
+
 /* ---------- heatmap ---------- */
 function renderHeatmap() {
   const key = hmTool + ':' + STATS.generatedAt;
@@ -939,7 +1136,7 @@ function renderSessions() {
   let list = STATS.sessions.filter((s) =>
     (sessTool === 'all' || s.tool === sessTool) &&
     (!cutoff || (s.lastDate || '') >= cutoff) &&
-    (!q || (s.first || '').toLowerCase().includes(q) || (s.model || '').toLowerCase().includes(q) || (s.ctx || '').toLowerCase().includes(q) || (s.file || '').toLowerCase().includes(q))
+    (!q || [s.first, s.projectName, s.projectPath, s.model, s.ctx, s.file].some((v) => (v || '').toLowerCase().includes(q)))
   );
   list.sort((a, b) => {
     const va = a[sessSort], vb = b[sessSort];
@@ -954,18 +1151,19 @@ function renderSessions() {
   document.getElementById('sessBody').innerHTML = list.length ? list.map((s, i) => `
     <tr class="row" data-i="${i}">
       <td class="num">${s.lastDate || ''}</td>
-      <td><span class="pill"><i class="swatch" style="background:${TC[s.tool]}"></i>${s.tool}</span></td>
+      <td><span class="pill"><i class="swatch" style="background:${TC[s.tool]}"></i>${s.tool}${s.host === 'win' ? '<span style="opacity:.55;font-weight:400">·win</span>' : ''}</span></td>
+      <td class="msg" style="max-width:150px">${esc(s.projectName)}</td>
       <td class="msg" style="max-width:150px">${esc(s.model)}</td>
       <td class="num">${s.calls}</td>
       <td class="num" style="font-weight:600;color:var(--ink)">${fmt(s.tot)}</td>
       <td class="num">${fmtCost(s.cost)}</td>
       <td class="msg">${esc(s.first) || '<span style="color:var(--ink-3)">（无首条消息）</span>'}</td>
     </tr>
-    <tr class="detail" data-d="${i}" hidden><td colspan="7"><div class="detail-inner">
+    <tr class="detail" data-d="${i}" hidden><td colspan="8"><div class="detail-inner">
       <div><span class="k">首条消息</span><span class="full">${esc(s.first) || '—'}</span></div>
-      <div style="margin-top:4px"><span class="k">区间</span>${s.firstDate} ~ ${s.lastDate} <span class="k" style="margin-left:14px">上下文</span>${esc(s.ctx) || '—'} <span class="k" style="margin-left:14px">文件</span>${esc(s.file)}</div>
+      <div style="margin-top:4px"><span class="k">区间</span>${s.firstDate} ~ ${s.lastDate} <span class="k" style="margin-left:14px">主机</span>${s.host || 'linux'} <span class="k" style="margin-left:14px">项目</span>${esc(s.projectPath) || '—'} <span class="k" style="margin-left:14px">上下文</span>${esc(s.ctx) || '—'} <span class="k" style="margin-left:14px">文件</span>${esc(s.file)}</div>
     </div></td></tr>`).join('')
-    : '<tr><td colspan="7" style="text-align:center;color:var(--ink-3);padding:30px">该筛选下暂无会话</td></tr>';
+    : '<tr><td colspan="8" style="text-align:center;color:var(--ink-3);padding:30px">该筛选下暂无会话</td></tr>';
 
   document.querySelectorAll('#sessBody tr.row').forEach((tr) => {
     tr.onclick = () => {
@@ -1022,7 +1220,7 @@ function renderTotals() {
 }
 
 function renderAll() {
-  renderKpis(); renderTotals(); renderTrend(); renderCost(); renderShare(); renderCache(); renderModelTrend(); renderModels(); renderHeatmap(); renderSessions(); renderComp();
+  renderKpis(); renderTotals(); renderTrend(); renderCost(); renderShare(); renderCache(); renderModelTrend(); renderModels(); renderProjects(); renderWorklog(); renderHeatmap(); renderSessions(); renderComp();
 }
 
 /* ---------- prices modal ---------- */
@@ -1066,6 +1264,9 @@ document.getElementById('pricesSave').onclick = async () => {
   refresh();
 };
 
+document.getElementById('projectClose').onclick = () => { document.getElementById('projectModal').hidden = true; };
+document.getElementById('projectModal').addEventListener('click', (e) => { if (e.target.id === 'projectModal') e.target.hidden = true; });
+
 /* ---------- export ---------- */
 function downloadCSV() {
   const cutoff = sessRange > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - sessRange); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })() : null;
@@ -1073,10 +1274,10 @@ function downloadCSV() {
   const list = STATS.sessions.filter((s) =>
     (sessTool === 'all' || s.tool === sessTool) &&
     (!cutoff || (s.lastDate || '') >= cutoff) &&
-    (!q || (s.first || '').toLowerCase().includes(q) || (s.model || '').toLowerCase().includes(q) || (s.ctx || '').toLowerCase().includes(q) || (s.file || '').toLowerCase().includes(q))
+    (!q || [s.first, s.projectName, s.projectPath, s.model, s.ctx, s.file].some((v) => (v || '').toLowerCase().includes(q)))
   );
-  const head = ['tool', 'model', 'firstDate', 'lastDate', 'calls', 'tokens', 'cost_usd', 'first_message', 'context', 'file'];
-  const rows = list.map((s) => [s.tool, s.model, s.firstDate, s.lastDate, s.calls, s.tot, (s.cost || 0).toFixed(4), (s.first || '').replace(/[\r\n,]/g, ' '), (s.ctx || ''), s.file]);
+  const head = ['tool', 'project', 'project_path', 'model', 'firstDate', 'lastDate', 'calls', 'tokens', 'cost_usd', 'first_message', 'context', 'file'];
+  const rows = list.map((s) => [s.tool, s.projectName, s.projectPath, s.model, s.firstDate, s.lastDate, s.calls, s.tot, (s.cost || 0).toFixed(4), (s.first || '').replace(/[\r\n,]/g, ' '), (s.ctx || ''), s.file]);
   const csv = [head, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -1101,6 +1302,7 @@ bindChips('trendChips', (b) => { trendRange = Number(b.dataset.range); lastTrend
 bindChips('hmChips', (b) => { hmTool = b.dataset.tool; lastHmKey = ''; renderHeatmap(); });
 bindChips('modelChips', (b) => { modelSort = b.dataset.sort; lastModelKey = ''; renderModels(); });
 bindChips('modelTrendChips', (b) => { modelTrendRange = Number(b.dataset.range); lastModelTrendKey = ''; renderModelTrend(); });
+bindChips('worklogChips', (b) => { worklogRange = Number(b.dataset.range); lastWorklogKey = ''; renderWorklog(); });
 bindChips('sessToolChips', (b) => { sessTool = b.dataset.tool; lastSessKey = ''; renderSessions(); });
 bindChips('sessRangeChips', (b) => { sessRange = Number(b.dataset.range); lastSessKey = ''; renderSessions(); });
 
