@@ -400,6 +400,7 @@ function scan() {
 
       cache.files[file] = {
         tool, mt: st.mtimeMs, sz: st.size,
+        host: file.startsWith('/mnt/c/') ? 'win' : 'linux',
         agg: coll.agg, hours: coll.hours,
         tot: coll.tot, calls: coll.calls,
         first: coll.first, firstDate: coll.firstDate, lastDate: coll.lastDate,
@@ -422,7 +423,7 @@ function scan() {
   console.log(`[scan] ${lastScan.ms}ms, reparsed=${changed}, files=${seen.size}`);
 }
 
-function buildSnapshot() {
+function aggregate(entries) {
   const b2o = (b) => ({ i: b[0], o: b[1], cr: b[2], cw: b[3] });
   const totals = { all: newB(), dsh: newB(), codex: newB(), claude: newB() };
   const byDay = new Map();
@@ -462,7 +463,7 @@ function buildSnapshot() {
     return p;
   }
 
-  for (const [file, e] of Object.entries(cache.files)) {
+  for (const [file, e] of entries) {
     const tool = e.tool;
     if (!TOOL_SOURCES[tool]) continue;
     fileCount[tool]++;
@@ -601,6 +602,16 @@ function buildSnapshot() {
     hours,
     sessions,
   };
+}
+
+// per-host slices: same aggregation over a filtered entry set
+function buildSnapshot() {
+  const entries = Object.entries(cache.files);
+  const hostOf = (file, e) => e.host || (file.startsWith('/mnt/c/') ? 'win' : 'linux');
+  const all = aggregate(entries);
+  const linux = aggregate(entries.filter(([f, e]) => hostOf(f, e) !== 'win'));
+  const win = aggregate(entries.filter(([f, e]) => hostOf(f, e) === 'win'));
+  return { ...all, hosts: { linux, win } };
 }
 
 // ---------------------------------------------------------------------------

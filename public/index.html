@@ -345,6 +345,12 @@
     </div>
     <div class="head-actions">
       <span class="status"><span class="dot off" id="statusDot"></span><span id="statusText">连接中…</span></span>
+      <span class="chips" id="hostChips" style="margin-left:2px">
+        <span style="font:500 11px var(--font-m);color:var(--ink-3);align-self:center;margin-right:2px">主机</span>
+        <button class="chip active" data-host="all">全部</button>
+        <button class="chip" data-host="linux">Linux</button>
+        <button class="chip" data-host="win">Windows</button>
+      </span>
       <button class="btn" id="pricesBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9.5 9c0-1.1 1.1-1.8 2.5-1.8s2.5.7 2.5 1.8-1 1.6-2.5 1.8-2.5.7-2.5 1.8 1.1 1.8 2.5 1.8 2.5-.7 2.5-1.8"/></svg>
         单价设置
@@ -627,6 +633,8 @@ const WD = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'
 const MODEL_COLORS = ['#5B7CFA', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4', '#F43F5E', '#EC4899', '#84CC16', '#0EA5E9', '#A855F7', '#F97316', '#14B8A6'];
 
 let STATS = null;
+let RAW = null;          // merged snapshot incl. per-host slices
+let host = 'all';        // 'all' | 'linux' | 'win'
 let PRICES = null;
 let trendRange = 30, hmTool = 'all', sessRange = 30, sessTool = 'all', modelSort = 'tokens', worklogRange = 14;
 let modelTrendRange = 30;
@@ -1305,6 +1313,16 @@ bindChips('modelTrendChips', (b) => { modelTrendRange = Number(b.dataset.range);
 bindChips('worklogChips', (b) => { worklogRange = Number(b.dataset.range); lastWorklogKey = ''; renderWorklog(); });
 bindChips('sessToolChips', (b) => { sessTool = b.dataset.tool; lastSessKey = ''; renderSessions(); });
 bindChips('sessRangeChips', (b) => { sessRange = Number(b.dataset.range); lastSessKey = ''; renderSessions(); });
+document.getElementById('hostChips').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip');
+  if (!b || !RAW) return;
+  document.querySelectorAll('#hostChips .chip').forEach((c) => c.classList.remove('active'));
+  b.classList.add('active');
+  host = b.dataset.host;
+  STATS = pickView();
+  lastTrendKey = lastCostKey = lastShareKey = lastCacheKey = lastModelKey = lastModelTrendKey = lastSessKey = lastHmKey = lastProjectKey = lastWorklogKey = '';
+  renderAll();
+});
 
 /* session search + sortable headers */
 document.getElementById('sessSearch').addEventListener('input', (e) => { sessQuery = e.target.value; lastSessKey = ''; renderSessions(); });
@@ -1326,11 +1344,16 @@ function setStatus(state, text) {
   document.getElementById('statusDot').className = 'dot' + (state === 'busy' ? ' busy' : state === 'off' ? ' off' : '');
   document.getElementById('statusText').textContent = text;
 }
+function pickView() {
+  if (!RAW || host === 'all' || !RAW.hosts) return RAW;
+  return Object.assign({}, RAW, RAW.hosts[host]);
+}
 async function refresh() {
   try {
     const data = await (await fetch('/api/stats')).json();
     if (data.ready && data.stats) {
-      STATS = data.stats;
+      RAW = data.stats;
+      STATS = pickView();
       renderAll();
       const t = data.lastScan ? new Date(data.lastScan.at).toLocaleTimeString('zh-CN', { hour12: false }) : '';
       setStatus(data.scanning ? 'busy' : '', `${t} 扫描 ${data.lastScan.ms}ms · ${STATS.fileCount.dsh}+${STATS.fileCount.codex}+${STATS.fileCount.claude} 文件`);
