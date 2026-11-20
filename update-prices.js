@@ -13,15 +13,17 @@
  *   node update-prices.js                 # 从 OpenRouter 拉，写 prices.json + 热重载
  *   node update-prices.js --dry-run       # 只看会改成什么，不写不重载
  *   node update-prices.js --official ./official-prices.json
+ *   node update-prices.js --effective-date 2026-11-20
  *   OBS_URL=http://127.0.0.1:3180 node update-prices.js
  */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
+const prices = require('./lib/prices');
+const { localDate, validDate } = require('./public/calendar');
 
 const ROOT = __dirname;
-const PRICES_FILE = path.join(ROOT, 'prices.json');
 const SERVER = process.env.OBS_URL || 'http://127.0.0.1:3180';
 const OR_URL = 'https://openrouter.ai/api/v1/models';
 
@@ -29,6 +31,8 @@ const OR_URL = 'https://openrouter.ai/api/v1/models';
 // 参数解析
 // ---------------------------------------------------------------------------
 const args = process.argv.slice(2);
+const dateIdx = args.indexOf('--effective-date');
+const effectiveDate = dateIdx === -1 ? localDate() : args[dateIdx + 1];
 const dryRun = args.includes('--dry-run');
 const noReload = args.includes('--no-reload');
 const orIdx = args.indexOf('--openrouter-url');
@@ -66,14 +70,15 @@ const RATIOS = { cr: 0.1, cw: 1 };
 // 工具函数
 // ---------------------------------------------------------------------------
 const round = (n, d = 6) => { const p = 10 ** d; return Math.round(n * p) / p; };
-const parseNum = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+const parseNum = (v) => {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+};
 
 function readJSON(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
   catch { return fallback; }
-}
-function writeJSON(file, obj) {
-  fs.writeFileSync(file, JSON.stringify(obj, null, 2) + '\n');
 }
 
 // 带超时的 fetch（离线时快速失败，不卡住）
@@ -88,7 +93,7 @@ async function fetchWithTimeout(url, opts = {}, ms = 8000) {
 }
 
 // 拉取正在使用的模型列表（优先问服务，服务挂了就退回 prices.json 的键）
-async function getModelsInUse() {
+async function getModelsInUse(current) {
   try {
     const res = await fetchWithTimeout(SERVER + '/api/stats', {}, 3000);
     const j = await res.json();
@@ -96,8 +101,7 @@ async function getModelsInUse() {
       return [...new Set(j.stats.byModel.map((m) => m.model))];
     }
   } catch { /* server 不在跑 */ }
-  const p = readJSON(PRICES_FILE, { perM: {} });
-  return Object.keys(p.perM || {});
+  return Object.keys(current);
 }
 
 // 拉 OpenRouter 定价，返回 { openrouter_id: { i, o, cr?, cw? } }
@@ -183,9 +187,11 @@ function complete(p) {
 // 主流程
 // ---------------------------------------------------------------------------
 async function main() {
-  const models = await getModelsInUse();
-  const current = readJSON(PRICES_FILE, { perM: {} }).perM || {};
+  if (!validDate(effectiveDate)) throw new Error('--effective-date 需要 YYYY-MM-DD 日期');
+  const current = prices.ratesAt(prices.load(), effectiveDate);
   const official = readJSON(OFFICIAL_FILE, null); // 有官方表时优先且不联网
+  const models = await getModelsInUse(current);
+  if (!models.length && official) models.push(...Object.keys(official));
 
   let or = {};
   if (official) {
@@ -199,7 +205,7 @@ async function main() {
     }
   }
 
-  const next = {};
+  const changes = Object.create(null);
   const log = [];
   for (const model of models) {
     const cur = current[model];
@@ -212,38 +218,43 @@ async function main() {
       else if (cur) { found = complete(cur); src = 'keep(existing)'; }
       else continue; // 没有来源也没有原值，跳过
     }
-    next[model] = found;
-
     const before = cur ? JSON.stringify(cur) : '∅';
     const after = JSON.stringify(found);
-    if (before !== after) log.push(`  ${model}: ${before} -> ${after}  [${src}]`);
+    if (before !== after) {
+      changes[model] = found;
+      log.push(`  ${model}: ${before} -> ${after}  [${src}]`);
+    }
   }
 
-  // 保留 prices.json 里"当前没在用"但用户手动配过的项（防止误删）
-  for (const [k, v] of Object.entries(current)) if (!(k in next)) next[k] = v;
-
-  console.log(`\n共处理 ${models.length} 个在用模型，将写入 ${Object.keys(next).length} 项。`);
+  console.log(`\n生效日期 ${effectiveDate}，检查 ${models.length} 个模型，变更 ${log.length} 项。`);
   console.log(log.length ? '变更：\n' + log.join('\n') : '无变更。');
 
   if (dryRun) { console.log('\n[dry-run] 未写入。'); return; }
 
-  writeJSON(PRICES_FILE, { currency: 'USD', perM: next });
-  console.log(`\n已写入 ${PRICES_FILE}`);
-
-  if (noReload) { console.log('[--no-reload] 跳过热重载，重启服务后生效'); return; }
-
-  // 热重载运行中的服务（POST /api/prices 会保存 + 立即重算费用）
-  try {
-    const res = await fetch(SERVER + '/api/prices', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ perM: next }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    console.log(`已热重载 ${SERVER}，费用已按新价格重算。`);
-  } catch (e) {
-    console.warn(`热重载失败（${e.message}）——文件已写好，重启服务后生效。`);
+  if (!noReload) {
+    try {
+      const capabilities = await fetchWithTimeout(SERVER + '/api/prices?date=' + effectiveDate, {}, 3000);
+      if (!capabilities.ok || !(await capabilities.json()).versioned) {
+        // A legacy server treats a partial update as a replacement for the entire price file.
+        console.warn('运行中的服务尚不支持历史单价。请更新并重启服务。');
+      } else {
+        const res = await fetchWithTimeout(SERVER + '/api/prices', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ perM: changes, effectiveDate }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { storeId } = await res.json();
+        console.log(`已热重载 ${SERVER}，新单价自 ${effectiveDate} 生效。`);
+        // The server serialized this write with UI edits. Write locally only
+        // when OBS_URL points to a different store.
+        if (prices.load().storeId === storeId) return;
+      }
+    } catch (e) {
+      console.warn(`无法热重载（${e.message}），将使用本地价格文件。`);
+    }
   }
+  prices.saveChanges(changes, effectiveDate);
+  console.log(`本机单价已保存，生效日期为 ${effectiveDate}。`);
 }
 
 main().catch((e) => { console.error('出错:', e); process.exit(1); });
