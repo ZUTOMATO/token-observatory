@@ -18,14 +18,18 @@ const zlib = require('zlib');
 const cp = require('child_process');
 const http = require('http');
 const os = require('os');
+const { dataDir, writeJSON } = require('./lib/storage');
+const { localDate, validDate } = require('./public/calendar');
+const { createWeekly } = require('./lib/weekly');
+const { projectCommits } = require('./lib/commits');
+const devices = require('./lib/devices');
 
-const HOME = os.homedir();
+const HOME = process.env.OBS_LOG_HOME || os.homedir();
 const PORT = Number(process.env.PORT || 3180);
 const HOST = process.env.HOST || '127.0.0.1';
 const ROOT = __dirname;
 const PUB = path.join(ROOT, 'public');
-const CACHE_FILE = path.join(ROOT, '.scan-cache.json');
-const PRICES_FILE = path.join(ROOT, 'prices.json');
+const CACHE_FILE = path.join(dataDir, '.scan-cache.json');
 const RESCAN_INTERVAL_MS = 60 * 1000;
 
 // ---------------------------------------------------------------------------
@@ -62,7 +66,7 @@ function readFileText(file, zstd) {
   // dsh logs are multi-frame zstd (appended incrementally); Node's one-shot
   // zstdDecompressSync only returns the first frame, so shell out to `zstd`.
   try {
-    return cp.execFileSync('zstd', ['-dc', file], { maxBuffer: 4 << 30 }).toString('utf8');
+    return cp.execFileSync('zstd', ['-dc', file], { maxBuffer: 4 * 1024 ** 3 }).toString('utf8');
   } catch {
     try { return zlib.zstdDecompressSync(fs.readFileSync(file)).toString('utf8'); }
     catch { return fs.readFileSync(file, 'utf8'); }
@@ -119,8 +123,15 @@ function dominantModel(coll) {
 }
 
 function projectForContext(ctx) {
-  const raw = String(ctx || '').trim();
+  let raw = String(ctx || '').trim();
   if (!raw) return { id: 'unknown', name: '未归类', path: null };
+  if (path.sep === '/' && /^[A-Za-z]:[\\/]/.test(raw)) {
+    const drive = '/mnt/' + raw[0].toLowerCase();
+    if (!fs.existsSync(drive)) {
+      return { id: 'windows:' + path.win32.normalize(raw).toLowerCase(), name: path.win32.basename(raw) || 'Windows', path: raw };
+    }
+    raw = path.join(drive, raw.slice(3).replace(/\\/g, '/'));
+  }
   if (!path.isAbsolute(raw)) return { id: 'label:' + raw, name: raw, path: raw };
 
   let projectPath = path.normalize(raw);
@@ -171,7 +182,7 @@ function parseDsh(text, coll) {
   let pendingDates = null;
   let lastModel = 'unknown';
   for (const line of text.split('\n')) {
-    if (!line.includes('"assistant/') && !line.includes('"user/message"') && !line.includes('"type":"session"')) continue;
+    if (!line.includes('"assistant/') && !line.includes('"user/message"') && !line.includes('"session"')) continue;
     let d;
     try { d = JSON.parse(line); } catch { continue; }
     const data = d.data || {};
@@ -214,8 +225,8 @@ function parseCodex(text, coll) {
     try { d = JSON.parse(line); } catch { continue; }
     const p = d.payload || {};
     if (d.type === 'session_meta') {
-      const m = line.match(/"model":"([^"]+)"/);
-      if (m) model = m[1];
+      const initial = p.model || line.match(/"model"\s*:\s*"([^"]+)"/)?.[1];
+      if (typeof initial === 'string') model = initial;
       if (!coll.ctx && p.cwd) coll.ctx = p.cwd;
       continue;
     }
@@ -274,45 +285,22 @@ function parseClaude(text, coll, exclude, claimed, project) {
 // prices
 // ---------------------------------------------------------------------------
 
-const DEFAULT_PRICES = {
-  // USD per 1M tokens: i=fresh input, o=output, cr=cache read, cw=cache write
-  'gpt-5.6-sol':            { i: 2.5,  o: 15,  cr: 0.25,  cw: 2.5 },
-  'gpt-5.5':                { i: 2.5,  o: 15,  cr: 0.25,  cw: 2.5 },
-  'gpt-5*':                 { i: 1.25, o: 10,  cr: 0.125, cw: 1.25 },
-  'deepseek-v4-flash*':     { i: 0.05, o: 0.4, cr: 0.005, cw: 0.05 },
-  'deepseek-v4-pro*':       { i: 0.5,  o: 2.4, cr: 0.05,  cw: 0.5 },
-  'deepseek*':              { i: 0.3,  o: 1.2, cr: 0.03,  cw: 0.3 },
-  'glm-5*':                 { i: 0.6,  o: 2.4, cr: 0.06,  cw: 0.6 },
-  'glm*':                   { i: 0.4,  o: 1.6, cr: 0.04,  cw: 0.4 },
-  'qwen3*':                 { i: 0.4,  o: 1.6, cr: 0.04,  cw: 0.4 },
-  'claude*':                { i: 3,    o: 15,  cr: 0.3,   cw: 3.75 },
-  'default':                { i: 1,    o: 5,   cr: 0.1,   cw: 1 },
-};
+const prices = require('./lib/prices');
+let priceBook;
+try { priceBook = prices.load(); }
+catch (error) {
+  console.warn('[prices] using default rates:', error.message);
+  priceBook = { perM: {}, history: {} };
+}
+let dailyPrices = new Map();
 
-let userPrices = {};
-function loadPrices() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(PRICES_FILE, 'utf8'));
-    if (raw && typeof raw === 'object') userPrices = raw.perM || {};
-  } catch { userPrices = {}; }
+function costOf(buckets, model, date) {
+  if (!dailyPrices.has(date)) dailyPrices.set(date, prices.ratesAt(priceBook, date));
+  const p = prices.forModel(dailyPrices.get(date), model);
+  return (buckets[0] * (p.i || 0) + buckets[1] * (p.o || 0) +
+    buckets[2] * (p.cr || 0) + buckets[3] * (p.cw || 0)) / 1e6;
 }
-function savePrices(perM) {
-  userPrices = perM || {};
-  fs.writeFileSync(PRICES_FILE, JSON.stringify({ currency: 'USD', perM: userPrices }, null, 2));
-}
-function priceFor(model) {
-  if (userPrices[model]) return userPrices[model];
-  if (DEFAULT_PRICES[model]) return DEFAULT_PRICES[model];
-  for (const [k, v] of Object.entries(DEFAULT_PRICES)) {
-    if (k.endsWith('*') && model.startsWith(k.slice(0, -1))) return v;
-  }
-  return DEFAULT_PRICES.default;
-}
-function costOf(b, model) {
-  const p = priceFor(model);
-  return (b[0] * (p.i || 0) + b[1] * (p.o || 0) + b[2] * (p.cr || 0) + b[3] * (p.cw || 0)) / 1e6;
-}
-loadPrices();
+
 
 // ---------------------------------------------------------------------------
 // scanner + cache
@@ -322,9 +310,10 @@ loadPrices();
 function discoverWindowsUsers() {
   const out = [];
   try {
-    if (fs.existsSync('/mnt/c/Users')) {
-      for (const u of fs.readdirSync('/mnt/c/Users')) {
-        const base = '/mnt/c/Users/' + u;
+    const users = process.env.OBS_WINDOWS_USERS_DIR || '/mnt/c/Users';
+    if (fs.existsSync(users)) {
+      for (const u of fs.readdirSync(users)) {
+        const base = path.join(users, u);
         if (fs.existsSync(base + '/.codex') || fs.existsSync(base + '/.claude')) out.push(base);
       }
     }
@@ -332,6 +321,10 @@ function discoverWindowsUsers() {
   return out;
 }
 const WIN_USERS = discoverWindowsUsers();
+
+function fileHost(file) {
+  return process.platform === 'win32' || WIN_USERS.some((dir) => file.startsWith(dir + path.sep)) ? 'win' : 'linux';
+}
 
 const TOOL_SOURCES = {
   dsh:    { dirs: [path.join(HOME, '.dsh', 'sessions')],                                                                  match: (n) => n === 'session.jsonl.zstd', zstd: true },
@@ -353,7 +346,7 @@ function loadCache() {
 }
 
 function saveCache() {
-  try { fs.writeFileSync(CACHE_FILE, JSON.stringify(cache)); }
+  try { writeJSON(CACHE_FILE, cache); }
   catch (err) { console.error('[cache] write failed:', err.message); }
 }
 
@@ -400,7 +393,7 @@ function scan() {
 
       cache.files[file] = {
         tool, mt: st.mtimeMs, sz: st.size,
-        host: file.startsWith('/mnt/c/') ? 'win' : 'linux',
+        host: fileHost(file),
         agg: coll.agg, hours: coll.hours,
         tot: coll.tot, calls: coll.calls,
         first: coll.first, firstDate: coll.firstDate, lastDate: coll.lastDate,
@@ -423,7 +416,8 @@ function scan() {
   console.log(`[scan] ${lastScan.ms}ms, reparsed=${changed}, files=${seen.size}`);
 }
 
-function aggregate(entries) {
+function aggregate(entries, today) {
+  const weekly = createWeekly(today);
   const b2o = (b) => ({ i: b[0], o: b[1], cr: b[2], cw: b[3] });
   const totals = { all: newB(), dsh: newB(), codex: newB(), claude: newB() };
   const byDay = new Map();
@@ -457,7 +451,7 @@ function aggregate(entries) {
     if (!day) worklogByDay.set(date, day = new Map());
     let p = day.get(info.id);
     if (!p) {
-      p = { ...info, tot: 0, cost: 0, tools: new Set(), sessionCount: 0, prompts: [] };
+      p = { ...info, tot: 0, i: 0, o: 0, cr: 0, cw: 0, cost: 0, tools: new Set(), sessionCount: 0, prompts: [] };
       day.set(info.id, p);
     }
     return p;
@@ -489,7 +483,8 @@ function aggregate(entries) {
       let mm = byModel.get(mk);
       if (!mm) byModel.set(mk, mm = { tool, model, b: newB() });
       for (let i = 0; i < 4; i++) mm.b[i] += b[i];
-      const c = costOf(b, model);
+      const c = costOf(b, model, date);
+      weekly.add(date, projectInfo, file, e, model, b, c);
       costByDay.set(date, (costByDay.get(date) || 0) + c);
       costByTool[tool] += c;
       mm.cost = (mm.cost || 0) + c;
@@ -508,6 +503,10 @@ function aggregate(entries) {
 
       const logProject = worklogProject(date, projectInfo);
       logProject.tot += sum;
+      logProject.i += b[0];
+      logProject.o += b[1];
+      logProject.cr += b[2];
+      logProject.cw += b[3];
       logProject.cost += c;
       logProject.tools.add(tool);
     }
@@ -517,7 +516,7 @@ function aggregate(entries) {
     if (e.tot > 0) {
       const session = {
         tool, file: path.basename(path.dirname(file)) + '/' + path.basename(file),
-        host: file.startsWith('/mnt/c/') ? 'win' : 'linux',
+        host: e.host || fileHost(file),
         first: e.first, firstDate: e.firstDate, lastDate: e.lastDate,
         tot: e.tot, calls: e.calls, model: e.model, ctx: e.ctx, cost: sessionCost,
         projectId: projectInfo.id, projectName: projectInfo.name, projectPath: projectInfo.path,
@@ -597,6 +596,7 @@ function aggregate(entries) {
     byDay: days,
     byDayModel: dayModels,
     byModel: models,
+    weekly: weekly.result(),
     projects,
     worklog,
     hours,
@@ -607,10 +607,11 @@ function aggregate(entries) {
 // per-host slices: same aggregation over a filtered entry set
 function buildSnapshot() {
   const entries = Object.entries(cache.files);
-  const hostOf = (file, e) => e.host || (file.startsWith('/mnt/c/') ? 'win' : 'linux');
-  const all = aggregate(entries);
-  const linux = aggregate(entries.filter(([f, e]) => hostOf(f, e) !== 'win'));
-  const win = aggregate(entries.filter(([f, e]) => hostOf(f, e) === 'win'));
+  const today = localDate();
+  const hostOf = (file, e) => e.host || fileHost(file);
+  const all = aggregate(entries, today);
+  const linux = aggregate(entries.filter(([f, e]) => hostOf(f, e) !== 'win'), today);
+  const win = aggregate(entries.filter(([f, e]) => hostOf(f, e) === 'win'), today);
   return { ...all, hosts: { linux, win } };
 }
 
@@ -628,6 +629,64 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
+function json(res, status, data) {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(data));
+}
+
+async function readBody(req, limit = 1024 * 1024) {
+  if (req.headers['content-type']?.split(';')[0].trim() !== 'application/json') {
+    throw new RangeError('请提交 JSON 数据');
+  }
+  const chunks = [];
+  let bytes = 0;
+  for await (const chunk of req) {
+    bytes += chunk.length;
+    if (bytes <= limit) chunks.push(chunk);
+  }
+  if (bytes > limit) throw new RangeError('文件过大，请缩小摘要后重试');
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+async function handleReview(req, res, url) {
+  const route = url.pathname;
+  if (route === '/api/prices') {
+    if (req.method === 'GET') {
+      const date = url.searchParams.get('date') ?? localDate();
+      if (!validDate(date)) throw new RangeError('请选择有效日期');
+      return json(res, 200, { date, versioned: true, defaults: prices.defaults, perM: prices.ratesAt(priceBook, date) });
+    }
+    if (req.method === 'POST') {
+      const body = await readBody(req);
+      priceBook = prices.saveChanges(body?.perM, body?.effectiveDate);
+      dailyPrices.clear();
+      snapshot = buildSnapshot();
+      return json(res, 200, { ok: true, storeId: priceBook.storeId });
+    }
+  }
+  if (!snapshot) return json(res, 503, { error: '首次扫描进行中' });
+  if (route === '/api/project-commits' && req.method === 'GET') {
+    const host = url.searchParams.get('host') || 'all';
+    const view = host === 'all' ? snapshot : ['linux', 'win'].includes(host) && snapshot.hosts[host];
+    const project = view && view.projects.find((p) => p.id === url.searchParams.get('project'));
+    if (!project) return json(res, 404, { error: '没有找到此主机上的项目' });
+    const date = url.searchParams.get('end') ?? view.weekly.end;
+    if (!validDate(date)) throw new RangeError('请选择有效日期');
+    return json(res, 200, await projectCommits(project, date));
+  }
+  if (route === '/api/devices' && req.method === 'GET') return json(res, 200, devices.overview(snapshot));
+  if (route === '/api/devices/export' && req.method === 'GET') return json(res, 200, devices.exportLocal(snapshot));
+  if (route === '/api/devices/import' && req.method === 'POST') {
+    const state = devices.importSnapshot(await readBody(req, 16 * 1024 * 1024));
+    return json(res, 200, { state });
+  }
+  if (route === '/api/devices/settings' && req.method === 'POST') {
+    devices.saveSettings(await readBody(req));
+    return json(res, 200, { ok: true });
+  }
+  return json(res, 405, { error: '请求方法或地址有误' });
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
@@ -644,29 +703,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (url.pathname === '/api/prices') {
-    if (req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ defaults: DEFAULT_PRICES, perM: userPrices }));
-      return;
-    }
-    if (req.method === 'POST') {
-      let body = '';
-      req.on('data', (c) => { body += c; if (body.length > 1 << 20) req.destroy(); });
-      req.on('end', () => {
-        try {
-          const perM = JSON.parse(body).perM || {};
-          savePrices(perM);
-          snapshot = buildSnapshot(); // recompute costs
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: true }));
-        } catch {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: false }));
-        }
-      });
-      return;
-    }
+  if (url.pathname === '/api/prices' || url.pathname === '/api/project-commits' || url.pathname.startsWith('/api/devices')) {
+    handleReview(req, res, url).catch((error) => {
+      const invalid = error instanceof RangeError || error instanceof SyntaxError;
+      if (!invalid) console.error('[api]', error.message);
+      json(res, invalid ? 400 : 500, { error: invalid ? error.message : '无法读取或保存本地数据' });
+    });
+    return;
   }
 
   let p = url.pathname === '/' ? '/index.html' : url.pathname;
@@ -680,7 +723,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Token Observatory listening on http://${HOST}:${PORT}`);
+  console.log(`Token Observatory listening on http://${HOST}:${server.address().port}`);
   setImmediate(scan);
   setInterval(scan, RESCAN_INTERVAL_MS);
 });

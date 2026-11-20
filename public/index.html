@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="vendor/chart.umd.min.js"></script>
+<script src="calendar.js"></script>
+<link rel="stylesheet" href="review.css">
 <style>
   :root {
     --bg: #F4F6FB;
@@ -160,7 +162,8 @@
   .panel-head .hint { font-size: 11px; color: var(--ink-3); }
   .grid-main { display: grid; grid-template-columns: minmax(0,1fr) 400px; gap: 16px; align-items: stretch; }
   .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; align-items: stretch; }
-  @media (max-width: 1180px) { .grid-main, .grid-2 { grid-template-columns: 1fr; } .kpis { grid-template-columns: repeat(3, 1fr); } }
+  .grid-main > .panel, .grid-2 > .panel { min-width: 0; }
+  @media (max-width: 1180px) { .grid-main, .grid-2 { grid-template-columns: minmax(0, 1fr); } .kpis { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, 1fr); } .wrap { padding: 14px 14px 60px; } header { top: 8px; } }
 
   .chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
@@ -215,7 +218,8 @@
   @media (max-width: 760px) { .project-list { grid-template-columns: 1fr; } }
 
   /* ---------- tool share ---------- */
-  .share-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: center; }
+  .share-wrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; align-items: center; }
+  @media (max-width: 640px) { .share-wrap { grid-template-columns: minmax(0, 1fr); } }
   .share-chart { position: relative; height: 190px; }
   .share-legend { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
   .share-item { display: flex; align-items: center; gap: 9px; font-size: 12.5px; }
@@ -359,9 +363,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 3v6h-6"/></svg>
         重扫
       </button>
+      <button class="btn" id="devicesBtn">设备汇总</button>
       <button class="btn" id="exportBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-        导出
+        会话 CSV
       </button>
     </div>
   </header>
@@ -379,10 +384,10 @@
       <div class="kpi-top"><div class="label">今日</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></div></div>
       <div class="value" id="kToday">–</div><div class="sub" id="kTodaySub"></div>
     </div>
-    <div class="kpi" style="--accent:linear-gradient(90deg,#8B5CF6,#EC4899);--tint:rgba(139,92,246,.12);--iconc:#7C3AED">
-      <div class="kpi-top"><div class="label">近 7 天</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div></div>
+    <a class="kpi week-link" href="#weeklyPanel" aria-label="近 7 天用量，查看项目变化" style="--accent:linear-gradient(90deg,#8B5CF6,#EC4899);--tint:rgba(139,92,246,.12);--iconc:#7C3AED">
+      <div class="kpi-top"><div class="label">近 7 天 ↘</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div></div>
       <div class="value" id="kWeek">–</div><div class="sub" id="kWeekSub"></div>
-    </div>
+    </a>
     <div class="kpi" style="--accent:linear-gradient(90deg,#06B6D4,#3B82F6);--tint:rgba(6,182,212,.12);--iconc:#0891B2">
       <div class="kpi-top"><div class="label">缓存命中率</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div></div>
       <div class="value" id="kCache">–</div><div class="sub">cache_read ÷ (input + cache_read)</div>
@@ -390,6 +395,18 @@
     <div class="kpi" style="--accent:linear-gradient(90deg,#F43F5E,#F59E0B);--tint:rgba(244,63,94,.10);--iconc:#E11D48">
       <div class="kpi-top"><div class="label">活跃 / 会话</div><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="4"/></svg></div></div>
       <div class="value" id="kAct">–</div><div class="sub" id="kActSub"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="weeklyPanel" aria-labelledby="weeklyTitle" tabindex="-1">
+    <div class="panel-head">
+      <h2 id="weeklyTitle"><span class="em"></span>近 7 天项目变化</h2>
+      <span class="hint" id="weeklyRange"></span>
+    </div>
+    <div id="weeklyProjects" class="growth-list"></div>
+    <div class="review-actions">
+      <button type="button" class="btn" id="weeklyMore" hidden></button>
+      <button type="button" class="btn" id="reportBtn">编写周报</button>
     </div>
   </section>
 
@@ -585,10 +602,10 @@
 
   <section class="panel">
     <div class="panel-head"><h2><span class="em" style="background:linear-gradient(135deg,#8B5CF6,#EC4899)"></span>分工具 Token 构成</h2><span class="hint">Input 为去除缓存读取后的净输入</span></div>
-    <table class="comp">
+    <div class="review-scroll"><table class="comp">
       <thead><tr><th>工具</th><th>Input</th><th>Cache Read</th><th>Cache Write</th><th>Output</th><th>Total</th><th>费用</th><th style="width:170px">构成</th></tr></thead>
       <tbody id="compBody"></tbody>
-    </table>
+    </table></div>
   </section>
 
   <footer>
@@ -600,11 +617,13 @@
 <div class="backdrop" id="pricesModal" hidden>
   <div class="modal">
     <h3>模型单价（USD / 1M tokens）</h3>
-    <div class="note">未覆盖的模型按通配规则回退（如 <span class="mono">deepseek*</span>）。保存后写入 <span class="mono">prices.json</span> 并立即重算费用。</div>
-    <table class="prices">
+    <div class="note">未覆盖的模型按通配规则回退（如 <span class="mono">deepseek*</span>）。单价自所选日期起计入估算。</div>
+    <label class="review-field">生效日期 <input type="date" id="priceDate" required></label>
+    <p class="review-status" id="priceStatus" role="status"></p>
+    <div class="review-scroll"><table class="prices">
       <thead><tr><th>模型</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Write</th></tr></thead>
       <tbody id="pricesBody"></tbody>
-    </table>
+    </table></div>
     <div class="modal-actions">
       <button class="btn" id="pricesCancel">取消</button>
       <button class="btn primary" id="pricesSave">保存并重算</button>
@@ -623,6 +642,38 @@
   </div>
 </div>
 
+<dialog class="review-dialog" id="growthDialog" aria-labelledby="growthTitle">
+  <div class="modal-title-row"><h3 id="growthTitle"></h3><button class="btn" data-close>关闭</button></div>
+  <p class="review-note" id="growthRange"></p>
+  <div id="growthDetail"></div>
+</dialog>
+
+<dialog class="review-dialog" id="reportDialog" aria-labelledby="reportTitle">
+  <div class="modal-title-row"><h3 id="reportTitle">开发周报</h3><button class="btn" data-close>关闭</button></div>
+  <p class="review-note" id="reportRange"></p>
+  <div id="reportProjects"></div>
+  <div class="modal-actions"><button class="btn primary" id="downloadReport">导出 Markdown</button></div>
+</dialog>
+
+<dialog class="review-dialog" id="devicesDialog" aria-labelledby="devicesTitle">
+  <div class="modal-title-row"><h3 id="devicesTitle">设备汇总</h3><button class="btn" data-close>关闭</button></div>
+  <p class="review-note" id="deviceRange"></p>
+  <div id="deviceTotals"></div>
+  <details class="review-group" id="deviceSettings"><summary>本机名称与导出别名</summary>
+    <p class="review-note">默认使用匿名项目代号。在两台设备上填写相同别名，即可按同一项目汇总。</p>
+    <label class="review-field">设备名称 <input id="deviceName" maxlength="80"></label>
+    <div id="deviceAliases"></div>
+    <button class="btn" id="saveDevice">保存名称与别名</button>
+  </details>
+  <div class="review-actions">
+    <button class="btn" id="exportDevice">导出本机摘要</button>
+    <button class="btn primary" id="importDevice">导入其他设备摘要</button>
+    <input type="file" id="deviceFile" accept=".json,application/json" hidden>
+  </div>
+  <p class="review-status" id="deviceStatus" role="status"></p>
+</dialog>
+
+<script src="review.js"></script>
 <script>
 'use strict';
 const TOOLS = ['dsh', 'codex', 'claude'];
@@ -659,7 +710,18 @@ const fmtCost = (n) => {
 };
 const sumB = (b) => b.i + b.o + b.cr + b.cw;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const todayStr = () => { const d = new Date(); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+const todayStr = () => STATS?.weekly.end || UsageCalendar.localDate();
+
+function calendarDays(rows, range, empty, extra = 0) {
+  const end = todayStr();
+  const start = range ? UsageCalendar.shift(end, 1 - range) : rows[0]?.date;
+  return start ? UsageCalendar.series(rows, UsageCalendar.shift(start, -extra), end, empty) : [];
+}
+
+function emptyDay(date) {
+  const zero = { i: 0, o: 0, cr: 0, cw: 0 };
+  return { date, cost: 0, dsh: zero, codex: zero, claude: zero };
+}
 
 function countUp(el, target, formatter) {
   const from = Number(el.dataset.v || 0);
@@ -693,17 +755,13 @@ function renderKpis() {
   const tSum = t ? sumB(t.dsh) + sumB(t.codex) + sumB(t.claude) : 0;
   countUp(document.getElementById('kToday'), tSum, fmt);
   document.getElementById('kTodaySub').textContent = t ? `${fmtCost(t.cost)} · ${TOOLS.filter((k) => sumB(t[k]) > 0).join(' + ') || '—'}` : '今天还没跑';
-  const dates = s.byDay.map((d) => d.date);
-  const last7 = dates.slice(-7), prev7 = dates.slice(-14, -7);
-  const dSum = (ds) => ds.reduce((a, d) => { const x = dayMap.get(d); return a + (x ? sumB(x.dsh) + sumB(x.codex) + sumB(x.claude) : 0); }, 0);
-  const w = dSum(last7), pw = dSum(prev7);
-  countUp(document.getElementById('kWeek'), w, fmt);
-  let delta = '';
-  if (pw > 0) {
-    const r = (w - pw) / pw * 100;
-    delta = ` <span class="${r >= 0 ? 'up' : 'down'}">${r >= 0 ? '▲' : '▼'}${Math.abs(r).toFixed(0)}%</span> vs 前 7 天`;
-  }
-  document.getElementById('kWeekSub').innerHTML = `${fmtCost(s.byDay.slice(-7).reduce((a, d) => a + d.cost, 0))}${delta}`;
+  const { current, previous } = s.weekly;
+  countUp(document.getElementById('kWeek'), current.tokens, fmt);
+  const change = previous.tokens
+    ? '较上期 ' + ((current.tokens - previous.tokens) / previous.tokens).toLocaleString('zh-CN', { style: 'percent', signDisplay: 'exceptZero' })
+    : current.tokens ? '上期无用量' : '两期均无用量';
+  document.getElementById('kWeekSub').textContent = fmtCost(current.cost) + ' · ' + change;
+
   const denom = all.i + all.cr;
   countUp(document.getElementById('kCache'), denom > 0 ? all.cr / denom * 100 : 0, (v) => v.toFixed(1) + '%');
 
@@ -714,19 +772,15 @@ function renderKpis() {
 
 /* ---------- daily trend ---------- */
 function renderTrend() {
-  let days = STATS.byDay;
-  if (trendRange > 0) days = days.slice(-trendRange);
-  const key = trendRange + ':' + days.length + ':' + (days[0] ? days[0].date : '') + ':' + (days[days.length - 1] ? sumB(days[days.length - 1].dsh) + sumB(days[days.length - 1].codex) + sumB(days[days.length - 1].claude) : 0);
+  const key = host + ':' + trendRange + ':' + STATS.generatedAt;
   if (key === lastTrendKey && dailyChart) return;
   lastTrendKey = key;
-  if (!days.length) return;
-
+  const history = calendarDays(STATS.byDay, trendRange, emptyDay, 6);
+  const days = history.slice(6);
+  const values = history.map((d) => TOOLS.reduce((n, tool) => n + sumB(d[tool]), 0));
+  const totals = values.slice(6);
   const labels = days.map((d) => d.date.slice(5));
-  const totals = days.map((d) => sumB(d.dsh) + sumB(d.codex) + sumB(d.claude));
-  const ma = totals.map((_, i) => {
-    const a = totals.slice(Math.max(0, i - 6), i + 1);
-    return a.reduce((x, y) => x + y, 0) / a.length;
-  });
+  const ma = days.map((_, i) => values.slice(i, i + 7).reduce((a, b) => a + b, 0) / 7);
 
   if (dailyChart) dailyChart.destroy();
   dailyChart = new Chart(document.getElementById('dailyChart'), {
@@ -772,11 +826,11 @@ function renderTrend() {
 
 /* ---------- cost trend ---------- */
 function renderCost() {
-  const days = STATS.byDay;
-  const key = days.length + ':' + (days[0] ? days[0].date : '') + ':' + (days[days.length - 1] ? days[days.length - 1].cost : 0);
+  const days = calendarDays(STATS.byDay, 0, emptyDay);
+  const key = host + ':' + STATS.generatedAt;
   if (key === lastCostKey && costChart) return;
   lastCostKey = key;
-  if (!days.length) return;
+  if (!days.length) { costChart?.destroy(); costChart = null; return; }
   const ctx = document.getElementById('costChart').getContext('2d');
   const grad = ctx.createLinearGradient(0, 0, 0, 240);
   grad.addColorStop(0, 'rgba(16,185,129,.28)');
@@ -818,7 +872,10 @@ function renderShare() {
   const rows = TOOLS.map((t) => ({ t, v: sumB(STATS.totals[t]), cost: STATS.cost.byTool[t] })).filter((r) => r.v > 0);
   const total = rows.reduce((a, r) => a + r.v, 0);
   if (shareChart) shareChart.destroy();
+  const wrap = document.getElementById('shareChart').parentNode;
+  wrap.querySelector('.share-center')?.remove();
   if (!rows.length) {
+    shareChart = null;
     document.getElementById('shareLegend').innerHTML = '<div style="color:var(--ink-3);font-size:12px;padding:10px 0">暂无数据</div>';
     return;
   }
@@ -851,8 +908,6 @@ function renderShare() {
   const center = document.createElement('div');
   center.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none';
   center.innerHTML = `<div style="font:700 20px var(--font-m);color:var(--ink)">${fmt(total)}</div><div style="font:500 9.5px var(--font-m);color:var(--ink-3);letter-spacing:.05em">TOKENS</div>`;
-  const wrap = document.getElementById('shareChart').parentNode;
-  wrap.querySelector('.share-center')?.remove();
   center.className = 'share-center';
   wrap.appendChild(center);
 
@@ -868,11 +923,11 @@ function renderShare() {
 
 /* ---------- cache hit rate trend ---------- */
 function renderCache() {
-  const days = STATS.byDay;
-  const key = days.length + ':' + (days[0] ? days[0].date : '') + ':' + (days[days.length - 1] ? (days[days.length - 1].dsh.cr + days[days.length - 1].codex.cr) : 0);
+  const days = calendarDays(STATS.byDay, 0, emptyDay);
+  const key = host + ':' + STATS.generatedAt;
   if (key === lastCacheKey && cacheChart) return;
   lastCacheKey = key;
-  if (!days.length) return;
+  if (!days.length) { cacheChart?.destroy(); cacheChart = null; return; }
   const data = days.map((d) => {
     const cr = d.dsh.cr + d.codex.cr + d.claude.cr;
     const i = d.dsh.i + d.codex.i + d.claude.i;
@@ -913,9 +968,8 @@ function renderCache() {
 
 /* ---------- model trend (per-day per-model, stacked) ---------- */
 function renderModelTrend() {
-  let days = STATS.byDayModel || [];
-  if (modelTrendRange > 0) days = days.slice(-modelTrendRange);
-  const key = modelTrendRange + ':' + days.length + ':' + (days[0] ? days[0].date : '') + ':' + (days[days.length - 1] ? days[days.length - 1].models[0] && days[days.length - 1].models[0].model : '');
+  const days = calendarDays(STATS.byDayModel, modelTrendRange, (date) => ({ date, models: [] }));
+  const key = host + ':' + modelTrendRange + ':' + STATS.generatedAt;
   if (key === lastModelTrendKey && modelTrendChart) return;
   lastModelTrendKey = key;
   const el = document.getElementById('modelTrendChart');
@@ -1083,11 +1137,8 @@ function openProject(p) {
 function renderWorklog() {
   let days = STATS.worklog || [];
   if (worklogRange > 0) {
-    const d = new Date();
-    d.setDate(d.getDate() - worklogRange + 1);
-    const pad = (x) => String(x).padStart(2, '0');
-    const cutoff = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    days = days.filter((x) => x.date >= cutoff);
+    const cutoff = UsageCalendar.shift(todayStr(), 1 - worklogRange);
+    days = days.filter((x) => x.date >= cutoff && x.date <= todayStr());
   }
   const key = worklogRange + ':' + STATS.generatedAt + ':' + days.length;
   if (key === lastWorklogKey) return;
@@ -1138,21 +1189,25 @@ function renderHeatmap() {
 }
 
 /* ---------- sessions ---------- */
-function renderSessions() {
-  const cutoff = sessRange > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - sessRange); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })() : null;
+function matchingSessions() {
+  const cutoff = sessRange > 0 ? UsageCalendar.shift(todayStr(), 1 - sessRange) : null;
   const q = sessQuery.trim().toLowerCase();
-  let list = STATS.sessions.filter((s) =>
+  return STATS.sessions.filter((s) =>
     (sessTool === 'all' || s.tool === sessTool) &&
-    (!cutoff || (s.lastDate || '') >= cutoff) &&
+    (!cutoff || (s.lastDate >= cutoff && s.firstDate <= todayStr())) &&
     (!q || [s.first, s.projectName, s.projectPath, s.model, s.ctx, s.file].some((v) => (v || '').toLowerCase().includes(q)))
   );
+}
+
+function renderSessions() {
+  let list = matchingSessions();
   list.sort((a, b) => {
     const va = a[sessSort], vb = b[sessSort];
     const r = (typeof va === 'string' ? (va < vb ? -1 : va > vb ? 1 : 0) : va - vb);
     return sessAsc ? r : -r;
   });
   list = list.slice(0, 80);
-  const key = sessTool + sessRange + q + sessSort + sessAsc + list.length + (list[0] ? list[0].tot : 0);
+  const key = [host, STATS.generatedAt, sessTool, sessRange, sessQuery, sessSort, sessAsc].join(':');
   if (key === lastSessKey) return;
   lastSessKey = key;
 
@@ -1228,48 +1283,71 @@ function renderTotals() {
 }
 
 function renderAll() {
-  renderKpis(); renderTotals(); renderTrend(); renderCost(); renderShare(); renderCache(); renderModelTrend(); renderModels(); renderProjects(); renderWorklog(); renderHeatmap(); renderSessions(); renderComp();
+  renderKpis(); renderWeekly(); renderTotals(); renderTrend(); renderCost(); renderShare(); renderCache(); renderModelTrend(); renderModels(); renderProjects(); renderWorklog(); renderHeatmap(); renderSessions(); renderComp();
 }
 
 /* ---------- prices modal ---------- */
 function clientPriceFor(model, defaults, perM) {
-  if (perM[model]) return perM[model];
-  if (defaults[model]) return defaults[model];
+  if (Object.hasOwn(perM, model)) return perM[model];
+  if (Object.hasOwn(defaults, model)) return defaults[model];
   for (const [k, v] of Object.entries(defaults)) {
     if (k.endsWith('*') && model.startsWith(k.slice(0, -1))) return v;
   }
   return defaults.default || { i: 1, o: 5, cr: 0.1, cw: 1 };
 }
-async function openPrices() {
-  const res = await fetch('/api/prices');
-  PRICES = await res.json();
-  const models = [...new Set(STATS.byModel.map((m) => m.model))].slice(0, 16);
-  document.getElementById('pricesBody').innerHTML = models.map((m) => {
-    const p = clientPriceFor(m, PRICES.defaults, PRICES.perM);
-    return `<tr data-model="${esc(m)}">
-      <td>${esc(m)}</td>
-      <td><input data-f="i" type="number" step="any" value="${p.i ?? 0}"></td>
-      <td><input data-f="o" type="number" step="any" value="${p.o ?? 0}"></td>
-      <td><input data-f="cr" type="number" step="any" value="${p.cr ?? 0}"></td>
-      <td><input data-f="cw" type="number" step="any" value="${p.cw ?? 0}"></td>
-    </tr>`;
-  }).join('');
-  document.getElementById('pricesModal').hidden = false;
+async function loadPriceDate() {
+  const date = document.getElementById('priceDate').value;
+  const body = document.getElementById('pricesBody');
+  const status = document.getElementById('priceStatus');
+  const save = document.getElementById('pricesSave');
+  body.replaceChildren();
+  save.disabled = true;
+  status.textContent = '正在读取单价…';
+  try {
+    const result = await reviewJSON('/api/prices?date=' + encodeURIComponent(date));
+    if (document.getElementById('priceDate').value !== date) return;
+    PRICES = result;
+    const models = new Set([...(STATS?.byModel || []).map((m) => m.model), ...Object.keys(result.perM)]);
+    body.innerHTML = [...models].map((m) => {
+      const rate = clientPriceFor(m, result.defaults, result.perM);
+      return `<tr data-model="${esc(m)}"><td>${esc(m)}</td>` +
+        ['i', 'o', 'cr', 'cw'].map((key) =>
+          `<td><input aria-label="${esc(m)} ${key}" data-f="${key}" min="0" type="number" step="any" required value="${rate[key] ?? 0}"></td>`).join('') + '</tr>';
+    }).join('');
+    status.textContent = models.size ? '' : '扫描到模型后可在此设置单价。';
+    save.disabled = !models.size;
+  } catch (err) {
+    if (document.getElementById('priceDate').value === date) status.textContent = err.message;
+  }
 }
-document.getElementById('pricesBtn').onclick = openPrices;
+document.getElementById('pricesBtn').onclick = () => {
+  document.getElementById('priceDate').value = todayStr();
+  document.getElementById('pricesModal').hidden = false;
+  loadPriceDate();
+};
+document.getElementById('priceDate').onchange = loadPriceDate;
 document.getElementById('pricesCancel').onclick = () => { document.getElementById('pricesModal').hidden = true; };
 document.getElementById('pricesModal').addEventListener('click', (e) => { if (e.target.id === 'pricesModal') e.target.hidden = true; });
 document.getElementById('pricesSave').onclick = async () => {
-  const perM = {};
-  document.querySelectorAll('#pricesBody tr').forEach((tr) => {
-    const m = tr.dataset.model, o = {};
-    tr.querySelectorAll('input').forEach((inp) => { o[inp.dataset.f] = Number(inp.value) || 0; });
-    perM[m] = o;
-  });
-  await fetch('/api/prices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perM }) });
-  document.getElementById('pricesModal').hidden = true;
-  lastTrendKey = lastCostKey = lastShareKey = lastCacheKey = lastModelKey = lastModelTrendKey = lastSessKey = lastHmKey = '';
-  refresh();
+  const perM = Object.create(null);
+  for (const row of document.querySelectorAll('#pricesBody tr')) {
+    const rate = {};
+    let changed = false;
+    for (const input of row.querySelectorAll('input')) {
+      if (!input.reportValidity()) return;
+      rate[input.dataset.f] = input.valueAsNumber;
+      if (input.valueAsNumber !== Number(input.defaultValue)) changed = true;
+    }
+    if (changed) perM[row.dataset.model] = rate;
+  }
+  const save = document.getElementById('pricesSave');
+  save.disabled = true;
+  try {
+    await reviewJSON('/api/prices', { perM, effectiveDate: PRICES.date });
+    document.getElementById('pricesModal').hidden = true;
+    await refresh();
+  } catch (err) { document.getElementById('priceStatus').textContent = err.message; }
+  finally { save.disabled = false; }
 };
 
 document.getElementById('projectClose').onclick = () => { document.getElementById('projectModal').hidden = true; };
@@ -1277,13 +1355,7 @@ document.getElementById('projectModal').addEventListener('click', (e) => { if (e
 
 /* ---------- export ---------- */
 function downloadCSV() {
-  const cutoff = sessRange > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - sessRange); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })() : null;
-  const q = sessQuery.trim().toLowerCase();
-  const list = STATS.sessions.filter((s) =>
-    (sessTool === 'all' || s.tool === sessTool) &&
-    (!cutoff || (s.lastDate || '') >= cutoff) &&
-    (!q || [s.first, s.projectName, s.projectPath, s.model, s.ctx, s.file].some((v) => (v || '').toLowerCase().includes(q)))
-  );
+  const list = matchingSessions();
   const head = ['tool', 'project', 'project_path', 'model', 'firstDate', 'lastDate', 'calls', 'tokens', 'cost_usd', 'first_message', 'context', 'file'];
   const rows = list.map((s) => [s.tool, s.projectName, s.projectPath, s.model, s.firstDate, s.lastDate, s.calls, s.tot, (s.cost || 0).toFixed(4), (s.first || '').replace(/[\r\n,]/g, ' '), (s.ctx || ''), s.file]);
   const csv = [head, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
